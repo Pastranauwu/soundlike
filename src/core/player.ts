@@ -4,7 +4,17 @@
  * (puerto), así se prueba con una batería falsa. No conoce juegos ni el DOM.
  * Regla del navegador: iniciar() solo se llama desde un gesto del usuario (clic).
  */
-import type { Bateria, Reproductor } from "./types";
+import * as Tone from "tone";
+import type { Bateria, Cuadricula, Reproductor, SonidoBateria } from "./types";
+import { PASOS, TEMPO_MAX, TEMPO_MIN } from "./types";
+
+const TEMPO_POR_DEFECTO = 120;
+
+function validarTempo(bpm: number): void {
+  if (!Number.isFinite(bpm) || bpm < TEMPO_MIN || bpm > TEMPO_MAX) {
+    throw new Error(`Tempo fuera de rango (${TEMPO_MIN}-${TEMPO_MAX}): ${bpm}`);
+  }
+}
 
 /**
  * Crea un reproductor de 16 pasos en loop sobre una cuadrícula.
@@ -30,5 +40,70 @@ import type { Bateria, Reproductor } from "./types";
  * - al avanzar al paso 0 con cuadricula {kick:[true,...]} -> fake.disparar("kick", t) llamado
  */
 export function crearReproductor(bateria: Bateria, tempoInicial?: number): Reproductor {
-  throw new Error("devclean: sin implementar");
+  const tempoDeseado = tempoInicial ?? TEMPO_POR_DEFECTO;
+  validarTempo(tempoDeseado);
+
+  let cuadricula: Cuadricula = {};
+  let sonando = false;
+  let pasoActual = -1;
+  let tempoActual = tempoDeseado;
+  const suscriptores = new Set<(paso: number) => void>();
+
+  const transport = Tone.getTransport();
+  transport.bpm.value = tempoActual;
+
+  const indicesDePaso = Array.from({ length: PASOS }, (_, indice) => indice);
+  const secuencia = new Tone.Sequence(
+    (tiempo: number, paso: number) => {
+      for (const pista of Object.keys(cuadricula)) {
+        if (cuadricula[pista][paso]) {
+          bateria.disparar(pista as SonidoBateria, tiempo);
+        }
+      }
+      pasoActual = paso;
+      for (const callback of suscriptores) {
+        callback(paso);
+      }
+    },
+    indicesDePaso,
+    "16n",
+  ).start(0);
+
+  return {
+    get sonando() {
+      return sonando;
+    },
+    get pasoActual() {
+      return pasoActual;
+    },
+    async iniciar() {
+      await Tone.start();
+      transport.start();
+      sonando = true;
+    },
+    pausar() {
+      transport.stop();
+      sonando = false;
+      pasoActual = -1;
+    },
+    setTempo(bpm: number) {
+      validarTempo(bpm);
+      tempoActual = bpm;
+      transport.bpm.value = bpm;
+    },
+    getTempo() {
+      return tempoActual;
+    },
+    cargar(nuevaCuadricula: Cuadricula) {
+      cuadricula = nuevaCuadricula;
+    },
+    alPaso(callback: (paso: number) => void) {
+      suscriptores.add(callback);
+      return () => suscriptores.delete(callback);
+    },
+    destruir() {
+      transport.stop();
+      secuencia.dispose();
+    },
+  };
 }
