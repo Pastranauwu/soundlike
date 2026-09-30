@@ -56,5 +56,98 @@ export function crearCuadriculaUI(
   pistas: readonly PistaDef[],
   alAlternar: (pistaId: string, paso: number) => void,
 ): CuadriculaUI {
-  throw new Error("devclean: sin implementar");
+  const elemento = document.createElement("div");
+  elemento.className = "cuadricula";
+
+  const celdasPorPista = new Map<string, HTMLButtonElement[]>();
+
+  for (const pista of pistas) {
+    const fila = document.createElement("div");
+    fila.className = "cuadricula__fila";
+    fila.dataset.pista = pista.id;
+
+    const nombre = document.createElement("span");
+    nombre.className = "cuadricula__nombre";
+    nombre.textContent = pista.nombre;
+    fila.appendChild(nombre);
+
+    const celdas: HTMLButtonElement[] = [];
+    for (let paso = 0; paso < 16; paso++) {
+      const celda = document.createElement("button");
+      celda.type = "button";
+      celda.className = "cuadricula__celda";
+      celda.dataset.paso = String(paso);
+      celda.setAttribute("aria-pressed", "false");
+      celda.setAttribute("aria-label", `${pista.nombre} paso ${paso + 1}`);
+      celda.addEventListener("click", () => {
+        const activa = celda.classList.toggle("cuadricula__celda--activa");
+        celda.setAttribute("aria-pressed", String(activa));
+        alAlternar(pista.id, paso);
+      });
+      fila.appendChild(celda);
+      celdas.push(celda);
+    }
+    celdasPorPista.set(pista.id, celdas);
+    elemento.appendChild(fila);
+  }
+
+  const numeros = document.createElement("div");
+  numeros.className = "cuadricula__numeros";
+  for (let paso = 0; paso < 16; paso++) {
+    const numero = document.createElement("span");
+    numero.className = "cuadricula__numero";
+    numero.textContent = String(paso + 1);
+    numeros.appendChild(numero);
+  }
+  elemento.appendChild(numeros);
+
+  function ponerCuadricula(cuadricula: Cuadricula): void {
+    for (const [pistaId, celdas] of celdasPorPista) {
+      const fila = cuadricula[pistaId];
+      celdas.forEach((celda, paso) => {
+        const activa = fila?.[paso] ?? false;
+        celda.classList.toggle("cuadricula__celda--activa", activa);
+        celda.setAttribute("aria-pressed", String(activa));
+      });
+    }
+  }
+
+  function ponerPasoActual(paso: number | null): void {
+    for (const celdas of celdasPorPista.values()) {
+      celdas.forEach((celda, indice) => {
+        celda.classList.toggle("cuadricula__celda--actual", indice === paso);
+      });
+    }
+  }
+
+  function marcarErrores(celdas: Celda[]): void {
+    for (const { pista, paso } of celdas) {
+      celdasPorPista.get(pista)?.[paso]?.classList.add("cuadricula__celda--error");
+    }
+  }
+
+  function limpiarErrores(): void {
+    for (const celdas of celdasPorPista.values()) {
+      for (const celda of celdas) {
+        celda.classList.remove("cuadricula__celda--error");
+      }
+    }
+  }
+
+  function habilitar(activa: boolean): void {
+    for (const celdas of celdasPorPista.values()) {
+      for (const celda of celdas) {
+        celda.disabled = !activa;
+      }
+    }
+  }
+
+  return {
+    elemento,
+    ponerCuadricula,
+    ponerPasoActual,
+    marcarErrores,
+    limpiarErrores,
+    habilitar,
+  };
 }
