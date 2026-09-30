@@ -3,6 +3,8 @@
  * FUNCIONES PURAS: no importa Tone.js ni el DOM.
  * Depende de celdasDistintas de src/core/sequencer. Lo usa juego.ts (comprobar).
  */
+import type { Celda } from "../../core/types";
+import { PISTAS_BATERIA } from "../../core/types";
 import type { Beat } from "./types";
 
 /**
@@ -27,5 +29,80 @@ import type { Beat } from "./types";
  * - sin diferencias -> ""
  */
 export function explicarError(original: Beat, roto: Beat): string {
-  throw new Error("devclean: sin implementar");
+  const quitados: Celda[] = [];
+  const agregados: Celda[] = [];
+
+  for (const pista of PISTAS_BATERIA) {
+    const pistaId = pista.id;
+    const originalFila = original.cuadricula[pistaId] || [];
+    const rotoFila = roto.cuadricula[pistaId] || [];
+
+    for (let paso = 0; paso < 16; paso++) {
+      if (originalFila[paso] && !rotoFila[paso]) {
+        quitados.push({ pista: pistaId, paso });
+      } else if (!originalFila[paso] && rotoFila[paso]) {
+        agregados.push({ pista: pistaId, paso });
+      }
+    }
+  }
+
+  const mapaNombres = new Map(PISTAS_BATERIA.map((p) => [p.id, p.nombre]));
+  const frases: string[] = [];
+
+  for (const pista of PISTAS_BATERIA) {
+    const quitadosEnPista = quitados
+      .filter((c) => c.pista === pista.id)
+      .map((c) => c.paso);
+    const agregadosEnPista = agregados
+      .filter((c) => c.pista === pista.id)
+      .map((c) => c.paso);
+
+    if (quitadosEnPista.length > 0) {
+      const pasos1Indexed = quitadosEnPista.map((p) => p + 1);
+      const tiempos = pasos1Indexed.map((p) => Math.ceil(p / 4));
+      frases.push(
+        formatarFrase("va", pista.nombre.toLowerCase(), pasos1Indexed, tiempos)
+      );
+    }
+
+    if (agregadosEnPista.length > 0) {
+      const pasos1Indexed = agregadosEnPista.map((p) => p + 1);
+      frases.push(
+        formatarFrase("no va", pista.nombre.toLowerCase(), pasos1Indexed)
+      );
+    }
+  }
+
+  return frases.join(" ");
+}
+
+function formatarFrase(
+  tipo: "va" | "no va",
+  pista: string,
+  pasos: number[],
+  tiempos?: number[]
+): string {
+  const formarLista = (items: number[]): string => {
+    if (items.length === 1) {
+      return items[0].toString();
+    }
+    if (items.length === 2) {
+      return `${items[0]} y ${items[1]}`;
+    }
+    return (
+      items.slice(0, -1).join(", ") + ` y ${items[items.length - 1]}`
+    );
+  };
+
+  const pasosStr = formarLista(pasos);
+  const palabra = pasos.length === 1 ? "paso" : "pasos";
+  const articulo = pasos.length === 1 ? "el" : "los";
+
+  if (tipo === "va") {
+    const tiemposStr = formarLista(tiempos!);
+    const palabraTiempo = tiempos!.length === 1 ? "tiempo" : "tiempos";
+    return `El ${pista} va en ${articulo} ${palabra} ${pasosStr} (${palabraTiempo} ${tiemposStr}).`;
+  } else {
+    return `El ${pista} no va en ${articulo} ${palabra} ${pasosStr}.`;
+  }
 }
