@@ -3,6 +3,57 @@
  * No depende de ningún otro módulo. Lo usarán los juegos de notas y oído.
  */
 
+const NOTAS = ["C", "D", "E", "F", "G", "A", "B"];
+const SEMITONOS_DESDE_C: Record<string, number> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
+
+function getNoteIndex(nota: string): number {
+  const base = nota[0];
+  if (!NOTAS.includes(base)) throw new Error("Nota inválida");
+  let semitono = SEMITONOS_DESDE_C[base];
+  if (nota.includes("#")) semitono += 1;
+  if (nota.includes("b")) semitono -= 1;
+  return ((semitono % 12) + 12) % 12;
+}
+
+function getTonicaIndex(tonica: string): number {
+  if (!NOTAS.includes(tonica[0])) throw new Error("Tónica inválida");
+  let semitono = SEMITONOS_DESDE_C[tonica[0]];
+  if (tonica.includes("#")) semitono += 1;
+  if (tonica.includes("b")) semitono -= 1;
+  return ((semitono % 12) + 12) % 12;
+}
+
+function getTonicaNaturalIndex(tonica: string): number {
+  const base = tonica[0];
+  return NOTAS.indexOf(base);
+}
+
+function buildScale(tonica: string, intervals: number[], step: number = 1): string[] {
+  const tonicaSemitono = getTonicaIndex(tonica);
+  const tonicaNaturalIndex = getTonicaNaturalIndex(tonica);
+
+  return intervals.map((interval, i) => {
+    const targetSemitono = (tonicaSemitono + interval) % 12;
+    const letterIndex = (tonicaNaturalIndex + i * step) % 7;
+    const letterName = NOTAS[letterIndex];
+    const naturalSemitono = SEMITONOS_DESDE_C[letterName];
+
+    const diff = (targetSemitono - naturalSemitono + 12) % 12;
+
+    if (diff === 0) return letterName;
+    if (diff === 1 || diff === 11) return letterName + (diff === 1 ? "#" : "b");
+    throw new Error("Intervalo no mapeable");
+  });
+}
+
 /**
  * Convierte una nota con octava a frecuencia en Hz (temperamento igual, A4 = 440 Hz).
  * Entrada: letra A-G mayúscula, alteración opcional "#" o "b", y octava 0-8
@@ -18,7 +69,20 @@
  * - noteToFreq("H4") -> lanza Error
  */
 export function noteToFreq(nota: string): number {
-  throw new Error("devclean: sin implementar");
+  const match = nota.match(/^([A-G])(#|b)?(\d)$/);
+  if (!match) throw new Error("Formato de nota inválido");
+
+  const [, letter, accidental, octaveStr] = match;
+  const octave = parseInt(octaveStr, 10);
+
+  if (octave < 0 || octave > 8) throw new Error("Octava fuera de rango 0-8");
+
+  let midiNote = 12 + SEMITONOS_DESDE_C[letter] + octave * 12;
+  if (accidental === "#") midiNote += 1;
+  if (accidental === "b") midiNote -= 1;
+
+  const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+  return Math.round(freq * 100) / 100;
 }
 
 /**
@@ -32,7 +96,7 @@ export function noteToFreq(nota: string): number {
  * - escalaMayor("X") -> lanza Error
  */
 export function escalaMayor(tonica: string): string[] {
-  throw new Error("devclean: sin implementar");
+  return buildScale(tonica, [0, 2, 4, 5, 7, 9, 11]);
 }
 
 /**
@@ -43,7 +107,7 @@ export function escalaMayor(tonica: string): string[] {
  * - escalaMenorNatural("E") -> ["E", "F#", "G", "A", "B", "C", "D"]
  */
 export function escalaMenorNatural(tonica: string): string[] {
-  throw new Error("devclean: sin implementar");
+  return buildScale(tonica, [0, 2, 3, 5, 7, 8, 10]);
 }
 
 /**
@@ -54,7 +118,7 @@ export function escalaMenorNatural(tonica: string): string[] {
  * - acordeMayor("D") -> ["D", "F#", "A"]
  */
 export function acordeMayor(tonica: string): string[] {
-  throw new Error("devclean: sin implementar");
+  return buildScale(tonica, [0, 4, 7], 2);
 }
 
 /**
@@ -65,5 +129,5 @@ export function acordeMayor(tonica: string): string[] {
  * - acordeMenor("D") -> ["D", "F", "A"]
  */
 export function acordeMenor(tonica: string): string[] {
-  throw new Error("devclean: sin implementar");
+  return buildScale(tonica, [0, 3, 7], 2);
 }
