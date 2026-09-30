@@ -26,5 +26,27 @@ export function iniciarEnrutador(
   contenedor: HTMLElement,
   rutas: Record<string, () => HTMLElement>,
 ): () => void {
-  throw new Error("devclean: sin implementar");
+  const renderizar = () => {
+    let hash = window.location.hash;
+
+    if (!hash || !(hash in rutas)) {
+      window.location.hash = "#/";
+      hash = "#/";
+    }
+
+    contenedor.innerHTML = "";
+    const vista = rutas[hash]();
+    contenedor.appendChild(vista);
+  };
+
+  const handleHashChange = () => {
+    renderizar();
+  };
+
+  renderizar();
+  window.addEventListener("hashchange", handleHashChange);
+
+  return () => {
+    window.removeEventListener("hashchange", handleHashChange);
+  };
 }
