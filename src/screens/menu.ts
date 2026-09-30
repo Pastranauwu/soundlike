@@ -31,5 +31,55 @@
  * - el título h1 dice "Soundlike"
  */
 export function crearMenu(): HTMLElement {
-  throw new Error("devclean: sin implementar");
+  const menu = document.createElement("main");
+  menu.className = "menu";
+  menu.append(crearTitulo(), crearSubtitulo(), crearTarjetas());
+  return menu;
+}
+
+const JUEGOS_PROXIMOS = ["Sigue el ritmo", "Adivina la nota", "Oído relativo"];
+
+function crearTitulo(): HTMLElement {
+  const titulo = document.createElement("h1");
+  titulo.textContent = "Soundlike";
+  return titulo;
+}
+
+function crearSubtitulo(): HTMLElement {
+  const subtitulo = document.createElement("p");
+  subtitulo.className = "menu__subtitulo";
+  subtitulo.textContent = "Minijuegos para entrenar el oído musical.";
+  return subtitulo;
+}
+
+function crearTarjetas(): HTMLElement {
+  const tarjetas = document.createElement("nav");
+  tarjetas.className = "menu__tarjetas";
+  tarjetas.setAttribute("aria-label", "Juegos");
+  tarjetas.append(crearTarjetaActiva(), ...JUEGOS_PROXIMOS.map(crearTarjetaProxima));
+  return tarjetas;
+}
+
+function crearTarjetaActiva(): HTMLElement {
+  const tarjeta = document.createElement("a");
+  tarjeta.className = "tarjeta";
+  tarjeta.href = "#/arregla-el-beat";
+  tarjeta.append(...crearContenidoTarjeta("Arregla el beat", "Encuentra y corrige los errores del ritmo."));
+  return tarjeta;
+}
+
+function crearTarjetaProxima(titulo: string): HTMLElement {
+  const tarjeta = document.createElement("span");
+  tarjeta.className = "tarjeta tarjeta--proximamente";
+  tarjeta.setAttribute("aria-disabled", "true");
+  tarjeta.append(...crearContenidoTarjeta(titulo, "Próximamente"));
+  return tarjeta;
+}
+
+function crearContenidoTarjeta(titulo: string, descripcion: string): HTMLElement[] {
+  const nombre = document.createElement("strong");
+  nombre.textContent = titulo;
+  const detalle = document.createElement("span");
+  detalle.textContent = descripcion;
+  return [nombre, detalle];
 }

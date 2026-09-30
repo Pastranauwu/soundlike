@@ -1,23 +1,13 @@
-/* devclean: sin implementar
- *
- * Tarea de diseño (ver ARCHITECTURE.md, sección UI):
- * aquí viven SOLO los tokens del tema oscuro, como custom properties en :root.
- * Contrato de tokens (nombres fijos, los valores los afina el diseño):
- *   --color-fondo          gris muy oscuro (fondo de página, p. ej. #121216)
- *   --color-superficie     tarjetas y controles, un tono más claro
- *   --color-celda          gris medio: celdas apagadas
- *   --color-celda-actual   columna del paso actual en reproducción
- *   --color-activa         amarillo: celdas activas (p. ej. #facc15)
- *   --color-error          rojo para celdas marcadas por la ayuda
- *   --color-texto          blanco
- *   --color-texto-suave    gris claro para textos secundarios
- *   --radio                radio de bordes
- *   --fuente               stack sans-serif del sistema
- * La prueba (tests/ui/diseno.test.ts) importa este archivo con ?inline y
- * verifica los tokens sobre el texto del CSS.
- * Casos:
- * - :root declara los 10 tokens (--color-fondo, --color-superficie, --color-celda,
- *   --color-celda-actual, --color-activa, --color-error, --color-texto,
- *   --color-texto-suave, --radio, --fuente), todos con valor no vacío
- * - --color-fondo es un gris muy oscuro y --color-activa un amarillo
- */
+/* Tokens del tema oscuro: el único lugar donde viven los colores y la tipografía. */
+:root {
+  --color-fondo: #121216;
+  --color-superficie: #1e1e24;
+  --color-celda: #4b4b55;
+  --color-celda-actual: #6b6b78;
+  --color-activa: #facc15;
+  --color-error: #ef4444;
+  --color-texto: #ffffff;
+  --color-texto-suave: #b4b4be;
+  --radio: 8px;
+  --fuente: system-ui, "Segoe UI", Roboto, sans-serif;
+}
