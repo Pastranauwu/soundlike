@@ -5,6 +5,10 @@
  * (puntaje/racha/nivel), ./breakBeat (romper) y ./feedback (frase de acierto).
  */
 import type { Celda, Cuadricula } from "../../core/types";
+import { celdasDistintas, cuadriculasIguales } from "../../core/sequencer";
+import { crearPuntaje, registrarAcierto, registrarFallo } from "../../core/scoring";
+import { breakBeat } from "./breakBeat";
+import { explicarError } from "./feedback";
 import type { Beat, EstadoJuego } from "./types";
 
 /** Mensaje fijo tras un intento fallido. */
@@ -19,7 +23,10 @@ export const MENSAJE_FALLO = "Todavía no suena igual. Sigue probando.";
  * - erroresPorNivel(0) y erroresPorNivel(4) -> lanzan Error
  */
 export function erroresPorNivel(nivel: number): number {
-  throw new Error("devclean: sin implementar");
+  if (nivel < 1 || nivel > 3) {
+    throw new Error(`Nivel fuera de rango: ${nivel}`);
+  }
+  return nivel;
 }
 
 /**
@@ -29,7 +36,14 @@ export function erroresPorNivel(nivel: number): number {
  *   rondaResuelta: false, ultimo: null, puntaje: {puntos:0,racha:0,nivel:1} }
  */
 export function crearJuego(): EstadoJuego {
-  throw new Error("devclean: sin implementar");
+  return {
+    beatOriginal: null,
+    beatRoto: null,
+    intentosFallidos: 0,
+    rondaResuelta: false,
+    ultimo: null,
+    puntaje: crearPuntaje(),
+  };
 }
 
 /**
@@ -41,7 +55,15 @@ export function crearJuego(): EstadoJuego {
  * - con nivel 2 -> 2 celdas distintas; mismas entradas -> mismo beatRoto
  */
 export function iniciarRonda(estado: EstadoJuego, beat: Beat, semilla: number): EstadoJuego {
-  throw new Error("devclean: sin implementar");
+  const nErrores = erroresPorNivel(estado.puntaje.nivel);
+  return {
+    ...estado,
+    beatOriginal: beat,
+    beatRoto: breakBeat(beat, nErrores, semilla),
+    intentosFallidos: 0,
+    rondaResuelta: false,
+    ultimo: null,
+  };
 }
 
 /**
@@ -58,7 +80,28 @@ export function iniciarRonda(estado: EstadoJuego, beat: Beat, semilla: number): 
  * - 3 aciertos seguidos en nivel 1 -> nivel pasa a 2
  */
 export function comprobar(estado: EstadoJuego, actual: Cuadricula): EstadoJuego {
-  throw new Error("devclean: sin implementar");
+  if (estado.beatOriginal === null || estado.beatRoto === null) {
+    throw new Error("No hay ronda iniciada");
+  }
+  if (estado.rondaResuelta) {
+    throw new Error("La ronda ya estaba resuelta");
+  }
+
+  if (cuadriculasIguales(estado.beatOriginal.cuadricula, actual)) {
+    return {
+      ...estado,
+      puntaje: registrarAcierto(estado.puntaje),
+      rondaResuelta: true,
+      ultimo: { acierto: true, mensaje: explicarError(estado.beatOriginal, estado.beatRoto) },
+    };
+  }
+
+  return {
+    ...estado,
+    puntaje: registrarFallo(estado.puntaje),
+    intentosFallidos: estado.intentosFallidos + 1,
+    ultimo: { acierto: false, mensaje: MENSAJE_FALLO },
+  };
 }
 
 /**
@@ -67,7 +110,7 @@ export function comprobar(estado: EstadoJuego, actual: Cuadricula): EstadoJuego 
  * - con intentosFallidos 2 -> false; con 3 -> true; ronda resuelta -> false
  */
 export function ayudaDisponible(estado: EstadoJuego): boolean {
-  throw new Error("devclean: sin implementar");
+  return !estado.rondaResuelta && estado.intentosFallidos >= 3;
 }
 
 /**
@@ -79,5 +122,8 @@ export function ayudaDisponible(estado: EstadoJuego): boolean {
  * - falta el clap del paso 4 -> [{ pista: "clap", paso: 4 }]
  */
 export function celdasErroneas(estado: EstadoJuego, actual: Cuadricula): Celda[] {
-  throw new Error("devclean: sin implementar");
+  if (estado.beatOriginal === null) {
+    throw new Error("No hay ronda iniciada");
+  }
+  return celdasDistintas(estado.beatOriginal.cuadricula, actual);
 }
