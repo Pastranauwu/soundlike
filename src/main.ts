@@ -4,6 +4,12 @@
  * No contiene reglas de negocio.
  */
 
+import "./ui/theme.css";
+import "./ui/app.css";
+import { iniciarEnrutador } from "./ui/router";
+import { crearMenu } from "./screens/menu";
+import { crearPantallaJuego } from "./games/arregla-el-beat/screen";
+
 /**
  * Arranca la aplicación sobre el elemento raíz.
  * Entrada: root (el <div id="app"> de index.html).
@@ -23,7 +29,10 @@
  * - con hash "#/cualquier-cosa" -> se ve el menú y location.hash queda "#/"
  */
 export function iniciarApp(root: HTMLElement): void {
-  throw new Error("devclean: sin implementar");
+  iniciarEnrutador(root, {
+    "#/": crearMenu,
+    "#/arregla-el-beat": () => crearPantallaJuego().elemento,
+  });
 }
 
 // Autoarranque en el navegador (en pruebas jsdom no existe #app: no hace nada).
