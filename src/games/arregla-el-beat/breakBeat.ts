@@ -4,6 +4,24 @@
  * Solo depende de los tipos. Lo usa juego.ts al iniciar cada ronda.
  */
 import type { Beat } from "./types";
+import type { Cuadricula } from "../../core/types";
+
+function mulberry32(a: number): () => number {
+  return () => {
+    const t = (a += 0x6d2b79f5);
+    let x = Math.imul(t ^ (t >>> 15), 1 | t);
+    x = x + Math.imul(x ^ (x >>> 7), 61 | x) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function copiarCuadricula(c: Cuadricula): Cuadricula {
+  const copia: Cuadricula = {};
+  for (const pista in c) {
+    copia[pista] = [...c[pista]];
+  }
+  return copia;
+}
 
 /**
  * Genera una versión rota del beat con exactamente nErrores celdas alteradas.
@@ -24,5 +42,38 @@ import type { Beat } from "./types";
  * - semillas distintas -> versiones rotas distintas (en general)
  */
 export function breakBeat(beat: Beat, nErrores: number, semilla: number): Beat {
-  throw new Error("devclean: sin implementar");
+  if (nErrores < 1 || nErrores > 64) {
+    throw new Error(`nErrores debe estar entre 1 y 64, recibido: ${nErrores}`);
+  }
+
+  const rng = mulberry32(semilla);
+  const nuevaCuadricula = copiarCuadricula(beat.cuadricula);
+
+  const pistas = Object.keys(nuevaCuadricula);
+  const celdasTotales = pistas.length * 16;
+  const indicesDisponibles = Array.from({ length: celdasTotales }, (_, i) => i);
+
+  // Fisher-Yates shuffle para seleccionar nErrores índices distintos
+  for (let i = 0; i < nErrores; i++) {
+    const randomIndex = Math.floor(rng() * (indicesDisponibles.length - i)) + i;
+    [indicesDisponibles[i], indicesDisponibles[randomIndex]] = [indicesDisponibles[randomIndex], indicesDisponibles[i]];
+  }
+
+  // Invertir las celdas seleccionadas
+  for (let i = 0; i < nErrores; i++) {
+    const indiceGlobal = indicesDisponibles[i];
+    const pistaIndex = Math.floor(indiceGlobal / 16);
+    const pasoIndex = indiceGlobal % 16;
+    const pistaNombre = pistas[pistaIndex];
+
+    nuevaCuadricula[pistaNombre][pasoIndex] = !nuevaCuadricula[pistaNombre][pasoIndex];
+  }
+
+  return {
+    id: beat.id,
+    nombre: beat.nombre,
+    genero: beat.genero,
+    tempo: beat.tempo,
+    cuadricula: nuevaCuadricula,
+  };
 }
