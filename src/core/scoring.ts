@@ -13,7 +13,7 @@ export const PUNTOS_POR_ACIERTO = 100;
  * - crearPuntaje() -> { puntos: 0, racha: 0, nivel: 1 }
  */
 export function crearPuntaje(): Puntaje {
-  throw new Error("devclean: sin implementar");
+  return { puntos: 0, racha: 0, nivel: 1 };
 }
 
 /**
@@ -30,7 +30,18 @@ export function crearPuntaje(): Puntaje {
  * - registrarAcierto({puntos:0,racha:1,nivel:2}) -> {puntos:200,racha:2,nivel:2}
  */
 export function registrarAcierto(puntaje: Puntaje, nivelMax: number = NIVEL_MAX): Puntaje {
-  throw new Error("devclean: sin implementar");
+  const nuevosPuntos = puntaje.puntos + PUNTOS_POR_ACIERTO * puntaje.nivel;
+  const nuevaRacha = puntaje.racha + 1;
+  const nuevoNivel =
+    nuevaRacha % 3 === 0 && puntaje.nivel < nivelMax
+      ? puntaje.nivel + 1
+      : puntaje.nivel;
+
+  return {
+    puntos: nuevosPuntos,
+    racha: nuevaRacha,
+    nivel: nuevoNivel,
+  };
 }
 
 /**
@@ -40,5 +51,9 @@ export function registrarAcierto(puntaje: Puntaje, nivelMax: number = NIVEL_MAX)
  * - registrarFallo({puntos:300,racha:2,nivel:2}) -> {puntos:300,racha:0,nivel:2}
  */
 export function registrarFallo(puntaje: Puntaje): Puntaje {
-  throw new Error("devclean: sin implementar");
+  return {
+    puntos: puntaje.puntos,
+    racha: 0,
+    nivel: puntaje.nivel,
+  };
 }
