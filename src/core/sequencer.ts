@@ -16,7 +16,16 @@ import type { Celda, Cuadricula, PistaDef } from "./types";
  * - crearCuadricula([{id:"a",nombre:"A"},{id:"a",nombre:"B"}]) -> lanza Error
  */
 export function crearCuadricula(pistas: readonly PistaDef[]): Cuadricula {
-  throw new Error("devclean: sin implementar");
+  const ids = new Set<string>();
+  const cuadricula: Cuadricula = {};
+  for (const pista of pistas) {
+    if (ids.has(pista.id)) {
+      throw new Error(`Pista duplicada: ${pista.id}`);
+    }
+    ids.add(pista.id);
+    cuadricula[pista.id] = new Array(16).fill(false);
+  }
+  return cuadricula;
 }
 
 /**
@@ -35,7 +44,22 @@ export function alternarPaso(
   pistaId: string,
   paso: number,
 ): Cuadricula {
-  throw new Error("devclean: sin implementar");
+  if (!(pistaId in cuadricula)) {
+    throw new Error(`Pista no existe: ${pistaId}`);
+  }
+  if (paso < 0 || paso >= 16) {
+    throw new Error(`Paso fuera de rango: ${paso}`);
+  }
+  const nueva: Cuadricula = {};
+  for (const id in cuadricula) {
+    if (id === pistaId) {
+      nueva[id] = [...cuadricula[id]];
+      nueva[id][paso] = !nueva[id][paso];
+    } else {
+      nueva[id] = [...cuadricula[id]];
+    }
+  }
+  return nueva;
 }
 
 /**
@@ -50,7 +74,17 @@ export function alternarPaso(
  * - diferencias en clap pasos 4 y 12 -> [{pista:"clap",paso:4},{pista:"clap",paso:12}]
  */
 export function celdasDistintas(a: Cuadricula, b: Cuadricula): Celda[] {
-  throw new Error("devclean: sin implementar");
+  const diferentes: Celda[] = [];
+  for (const pistaId in a) {
+    const filaA = a[pistaId];
+    const filaB = b[pistaId] || [];
+    for (let paso = 0; paso < filaA.length; paso++) {
+      if (filaA[paso] !== filaB[paso]) {
+        diferentes.push({ pista: pistaId, paso });
+      }
+    }
+  }
+  return diferentes;
 }
 
 /**
@@ -61,7 +95,7 @@ export function celdasDistintas(a: Cuadricula, b: Cuadricula): Celda[] {
  * - tras alternar un paso en una copia -> false
  */
 export function cuadriculasIguales(a: Cuadricula, b: Cuadricula): boolean {
-  throw new Error("devclean: sin implementar");
+  return celdasDistintas(a, b).length === 0 && celdasDistintas(b, a).length === 0;
 }
 
 /**
@@ -78,5 +112,8 @@ export function cuadriculasIguales(a: Cuadricula, b: Cuadricula): boolean {
  * - validarTempo(NaN) -> lanza Error
  */
 export function validarTempo(bpm: number): number {
-  throw new Error("devclean: sin implementar");
+  if (!Number.isFinite(bpm) || bpm < 60 || bpm > 180) {
+    throw new Error(`Tempo fuera de rango o no finito: ${bpm}`);
+  }
+  return bpm;
 }
