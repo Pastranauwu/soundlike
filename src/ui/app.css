@@ -1,0 +1,24 @@
+/* devclean: sin implementar
+ *
+ * Tarea de diseño (ver ARCHITECTURE.md, sección UI):
+ * aquí viven los estilos globales y de componentes, usando los tokens de theme.css.
+ * Contrato visual:
+ * - body: fondo --color-fondo, texto --color-texto, --fuente, tamaño base grande (>= 18px).
+ * - .cuadricula: centrada, width 100%, max-width 900px (escritorio); en celular
+ *   ocupa todo el ancho. .cuadricula__celda: min-height 32px (tocable), fondo
+ *   --color-celda; .cuadricula__celda--activa fondo --color-activa;
+ *   --actual resalta la columna; --error borde/fondo --color-error.
+ * - .juego: controles arriba (.juego__controles), cuadrícula al centro,
+ *   .juego__marcador en la esquina superior derecha.
+ * - .menu: tarjetas en columna en celular; media query >= 768px: fila/grid.
+ * - Responsive: media query con punto de corte 768px.
+ * La prueba (tests/ui/diseno.test.ts) importa este archivo con ?inline y
+ * verifica las reglas clave sobre el texto del CSS.
+ * Casos:
+ * - body con fondo var(--color-fondo), texto var(--color-texto) y font-size >= 18px
+ * - .cuadricula centrada con max-width 900px; .cuadricula__celda con
+ *   min-height >= 32px y fondo var(--color-celda)
+ * - .cuadricula__celda--activa con fondo var(--color-activa); hay reglas para
+ *   la columna --actual y para las celdas --error
+ * - .juego__marcador en la esquina superior derecha y existe @media (min-width: 768px)
+ */

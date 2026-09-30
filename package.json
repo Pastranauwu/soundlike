@@ -1,0 +1,25 @@
+{
+  "name": "soundlike",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Base de minijuegos musicales + juego \"Arregla el beat\"",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "capturas": "node scripts/capturas.mjs"
+  },
+  "dependencies": {
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "jsdom": "^30.1.1",
+    "playwright": "^1.63.0",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.3"
+  }
+}
