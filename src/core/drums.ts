@@ -3,7 +3,8 @@
  * Es la ÚNICA implementación del puerto Bateria (./types). No conoce juegos.
  * Quién lo usa: src/core/player.ts y las pantallas (inyectado por parámetro).
  */
-import type { Bateria } from "./types";
+import * as Tone from "tone";
+import type { Bateria, SonidoBateria } from "./types";
 
 /**
  * Crea la batería con los 4 sonidos sintetizados:
@@ -24,5 +25,41 @@ import type { Bateria } from "./types";
  * - destruir() -> dispose() llamado en todos los sintetizadores
  */
 export function crearBateria(): Bateria {
-  throw new Error("devclean: sin implementar");
+  const destino = Tone.getDestination();
+
+  const kick = new Tone.MembraneSynth().connect(destino);
+  const clap = new Tone.NoiseSynth().connect(destino);
+  const closedHat = new Tone.MetalSynth({
+    envelope: { decay: 0.05 },
+  }).connect(destino);
+  const openHat = new Tone.MetalSynth({
+    envelope: { decay: 0.4 },
+  }).connect(destino);
+
+  return {
+    disparar(sonido: SonidoBateria, cuando?: number): void {
+      switch (sonido) {
+        case "kick":
+          kick.triggerAttackRelease("C1", "8n", cuando);
+          break;
+        case "clap":
+          clap.triggerAttackRelease("16n", cuando);
+          break;
+        case "closed-hat":
+          closedHat.triggerAttackRelease(200, "32n", cuando);
+          break;
+        case "open-hat":
+          openHat.triggerAttackRelease(200, "32n", cuando);
+          break;
+        default:
+          throw new Error(`Sonido de batería desconocido: ${sonido}`);
+      }
+    },
+    destruir(): void {
+      kick.dispose();
+      clap.dispose();
+      closedHat.dispose();
+      openHat.dispose();
+    },
+  };
 }
