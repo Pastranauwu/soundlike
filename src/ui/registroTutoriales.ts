@@ -28,7 +28,37 @@ export const CLAVE_TUTORIALES_VISTOS = "soundlike:tutoriales-vistos";
  * - almacen = null -> marcarVisto("x") y luego visto("x") -> true (memoria)
  */
 export function crearRegistroTutoriales(almacen: Storage | null = almacenPorDefecto()): RegistroTutoriales {
-  throw new Error("devclean: sin implementar");
+  let vistos = new Set<string>();
+
+  if (almacen) {
+    try {
+      const valor = almacen.getItem(CLAVE_TUTORIALES_VISTOS);
+      if (valor) {
+        const parsed = JSON.parse(valor);
+        if (Array.isArray(parsed)) {
+          vistos = new Set(parsed);
+        }
+      }
+    } catch {
+      // JSON inválido o getItem lanzó: tratar como lista vacía
+    }
+  }
+
+  return {
+    visto(id: string): boolean {
+      return vistos.has(id);
+    },
+    marcarVisto(id: string): void {
+      vistos.add(id);
+      if (almacen) {
+        try {
+          almacen.setItem(CLAVE_TUTORIALES_VISTOS, JSON.stringify(Array.from(vistos)));
+        } catch {
+          // setItem lanzó: la memoria ya tiene el id
+        }
+      }
+    },
+  };
 }
 
 /**
@@ -38,5 +68,9 @@ export function crearRegistroTutoriales(almacen: Storage | null = almacenPorDefe
  * - si acceder a localStorage lanza -> null
  */
 function almacenPorDefecto(): Storage | null {
-  throw new Error("devclean: sin implementar");
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return null;
+  }
 }
