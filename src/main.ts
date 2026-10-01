@@ -9,6 +9,9 @@ import "./ui/app.css";
 import { iniciarEnrutador } from "./ui/router";
 import { crearMenu } from "./screens/menu";
 import { crearPantallaJuego } from "./games/arregla-el-beat/screen";
+import { crearPantallaTutoriales } from "./screens/tutoriales";
+import { crearPantallaAcerca } from "./screens/acerca";
+import { obtenerTutorial } from "./games/arregla-el-beat/tutorial";
 
 /**
  * Arranca la aplicación sobre el elemento raíz.
@@ -39,6 +42,8 @@ export function iniciarApp(root: HTMLElement): void {
   iniciarEnrutador(root, {
     "#/": crearMenu,
     "#/arregla-el-beat": () => crearPantallaJuego().elemento,
+    "#/tutoriales": () => crearPantallaTutoriales([obtenerTutorial()]),
+    "#/acerca-de": crearPantallaAcerca,
   });
 }
 
