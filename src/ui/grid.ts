@@ -82,17 +82,36 @@ export function crearCuadriculaUI(
 ): CuadriculaUI {
   const elemento = document.createElement("div");
   elemento.className = "cuadricula";
+  elemento.setAttribute("role", "group");
+  elemento.setAttribute(
+    "aria-label",
+    `Cuadrícula de ritmo: ${pistas.length} pistas por 16 pasos. Usa las flechas para moverte y Enter o Espacio para activar.`,
+  );
 
   const celdasPorPista = new Map<string, HTMLButtonElement[]>();
+  const filasEnOrden: HTMLButtonElement[][] = [];
+
+  function enfocarCelda(celda: HTMLButtonElement): void {
+    for (const celdas of celdasPorPista.values()) {
+      for (const otra of celdas) {
+        otra.tabIndex = -1;
+      }
+    }
+    celda.tabIndex = 0;
+    celda.focus();
+  }
 
   for (const pista of pistas) {
     const fila = document.createElement("div");
     fila.className = "cuadricula__fila";
     fila.dataset.pista = pista.id;
+    fila.setAttribute("role", "group");
+    fila.setAttribute("aria-label", pista.nombre);
 
     const nombre = document.createElement("span");
     nombre.className = "cuadricula__nombre";
     nombre.textContent = pista.nombre;
+    nombre.setAttribute("aria-hidden", "true");
     fila.appendChild(nombre);
 
     const celdas: HTMLButtonElement[] = [];
@@ -103,20 +122,64 @@ export function crearCuadriculaUI(
       celda.dataset.paso = String(paso);
       celda.setAttribute("aria-pressed", "false");
       celda.setAttribute("aria-label", `${pista.nombre} paso ${paso + 1}`);
+      celda.tabIndex = -1;
       celda.addEventListener("click", () => {
         const activa = celda.classList.toggle("cuadricula__celda--activa");
         celda.setAttribute("aria-pressed", String(activa));
         alAlternar(pista.id, paso);
+        enfocarCelda(celda);
+      });
+      celda.addEventListener("keydown", (evento) => {
+        manejarTecla(evento, pista.id, paso);
       });
       fila.appendChild(celda);
       celdas.push(celda);
     }
     celdasPorPista.set(pista.id, celdas);
+    filasEnOrden.push(celdas);
     elemento.appendChild(fila);
+  }
+
+  const primeraCelda = filasEnOrden[0]?.[0];
+  if (primeraCelda) {
+    primeraCelda.tabIndex = 0;
+  }
+
+  function manejarTecla(evento: KeyboardEvent, pistaId: string, paso: number): void {
+    const filaIndice = pistas.findIndex((pista) => pista.id === pistaId);
+    let nuevaFila = filaIndice;
+    let nuevoPaso = paso;
+
+    switch (evento.key) {
+      case "ArrowRight":
+        nuevoPaso = Math.min(paso + 1, 15);
+        break;
+      case "ArrowLeft":
+        nuevoPaso = Math.max(paso - 1, 0);
+        break;
+      case "ArrowDown":
+        nuevaFila = Math.min(filaIndice + 1, filasEnOrden.length - 1);
+        break;
+      case "ArrowUp":
+        nuevaFila = Math.max(filaIndice - 1, 0);
+        break;
+      case "Home":
+        nuevoPaso = 0;
+        break;
+      case "End":
+        nuevoPaso = 15;
+        break;
+      default:
+        return;
+    }
+
+    evento.preventDefault();
+    enfocarCelda(filasEnOrden[nuevaFila][nuevoPaso]);
   }
 
   const numeros = document.createElement("div");
   numeros.className = "cuadricula__numeros";
+  numeros.setAttribute("aria-hidden", "true");
   for (let paso = 0; paso < 16; paso++) {
     const numero = document.createElement("span");
     numero.className = "cuadricula__numero";
@@ -144,17 +207,25 @@ export function crearCuadriculaUI(
     }
   }
 
+  function etiquetaCelda(pistaId: string, paso: number): string {
+    const nombre = pistas.find((pista) => pista.id === pistaId)?.nombre ?? pistaId;
+    return `${nombre} paso ${paso + 1}`;
+  }
+
   function marcarErrores(celdas: Celda[]): void {
     for (const { pista, paso } of celdas) {
-      celdasPorPista.get(pista)?.[paso]?.classList.add("cuadricula__celda--error");
+      const celda = celdasPorPista.get(pista)?.[paso];
+      celda?.classList.add("cuadricula__celda--error");
+      celda?.setAttribute("aria-label", `${etiquetaCelda(pista, paso)}, equivocada`);
     }
   }
 
   function limpiarErrores(): void {
-    for (const celdas of celdasPorPista.values()) {
-      for (const celda of celdas) {
+    for (const [pistaId, celdas] of celdasPorPista) {
+      celdas.forEach((celda, paso) => {
         celda.classList.remove("cuadricula__celda--error");
-      }
+        celda.setAttribute("aria-label", etiquetaCelda(pistaId, paso));
+      });
     }
   }
 
