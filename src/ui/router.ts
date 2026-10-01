@@ -40,7 +40,16 @@ export function iniciarEnrutador(
   contenedor: HTMLElement,
   rutas: Record<string, () => HTMLElement>,
 ): () => void {
-  const renderizar = () => {
+  const actualizarTitulo = () => {
+    const h1 = contenedor.querySelector("h1");
+    if (h1 && h1.textContent && h1.textContent !== "Soundlike") {
+      document.title = `${h1.textContent} · Soundlike`;
+    } else {
+      document.title = "Soundlike";
+    }
+  };
+
+  const renderizar = (esHashChange = false) => {
     let hash = window.location.hash;
 
     if (!hash || !(hash in rutas)) {
@@ -51,10 +60,20 @@ export function iniciarEnrutador(
     contenedor.innerHTML = "";
     const vista = rutas[hash]();
     contenedor.appendChild(vista);
+
+    actualizarTitulo();
+
+    if (esHashChange) {
+      const h1 = contenedor.querySelector("h1");
+      if (h1) {
+        h1.setAttribute("tabindex", "-1");
+        h1.focus();
+      }
+    }
   };
 
   const handleHashChange = () => {
-    renderizar();
+    renderizar(true);
   };
 
   renderizar();
