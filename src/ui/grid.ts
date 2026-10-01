@@ -4,18 +4,33 @@
  * Lo usa la pantalla de "Arregla el beat" y lo usarán juegos futuros.
  *
  * CONTRATO DE DOM (lo comparte la tarea de diseño; no cambiar clases):
- * <div class="cuadricula">
- *   <div class="cuadricula__fila" data-pista="kick">
- *     <span class="cuadricula__nombre">Bombo</span>
- *     <button type="button" class="cuadricula__celda" data-paso="0"
- *             aria-pressed="false" aria-label="Bombo paso 1"></button>  x16
+ * <div class="cuadricula" role="group"
+ *      aria-label="Cuadrícula de ritmo: N pistas por 16 pasos. Usa las flechas para moverte y Enter o Espacio para activar.">
+ *   <div class="cuadricula__fila" data-pista="kick" role="group" aria-label="Bombo">
+ *     <span class="cuadricula__nombre" aria-hidden="true">Bombo</span>
+ *     <button type="button" class="cuadricula__celda" data-paso="0" tabindex="0"
+ *             aria-pressed="false" aria-label="Bombo paso 1"></button>
+ *     <button ... data-paso="1" tabindex="-1" aria-label="Bombo paso 2"></button>  x16
  *   </div>  xN pistas
- *   <div class="cuadricula__numeros">
+ *   <div class="cuadricula__numeros" aria-hidden="true">
  *     <span class="cuadricula__numero">1</span> ... <span>16</span>
  *   </div>
  * </div>
  * Clases de estado: --activa (encendida), --actual (columna del paso sonando),
  * --error (marcada por la ayuda). Los estilos viven en src/ui/app.css.
+ *
+ * ACCESIBILIDAD (teclado, táctil y lector de pantalla):
+ * - Tabulador "itinerante" (roving tabindex): exactamente UNA celda de toda la
+ *   cuadrícula tiene tabindex="0" (al inicio kick paso 0); las demás "-1". Así Tab
+ *   entra y sale de la cuadrícula con una sola parada.
+ * - keydown en una celda: ArrowRight/ArrowLeft = paso ±1, ArrowDown/ArrowUp =
+ *   pista ±1 (se detienen en los bordes, sin dar la vuelta), Home = paso 0 y
+ *   End = paso 15 de la misma pista. Mueve tabindex="0" a la nueva celda, le da
+ *   focus() y hace preventDefault. Enter/Espacio los maneja el <button> nativo (clic).
+ * - Clic o toque en una celda también la vuelve la celda con tabindex="0".
+ * - Estado para lector: aria-pressed ("true"/"false"). Celda marcada por
+ *   marcarErrores: aria-label "<Pista> paso <n>, equivocada"; limpiarErrores
+ *   restaura "<Pista> paso <n>".
  */
 import type { Celda, Cuadricula, PistaDef } from "../core/types";
 
@@ -51,6 +66,15 @@ export interface CuadriculaUI {
  * - ponerPasoActual(4) -> las 4 celdas con data-paso="4" llevan --actual; null limpia
  * - marcarErrores([{pista:"clap",paso:4}]) -> esa celda lleva --error; limpiarErrores la quita
  * - habilitar(false) -> todos los botones disabled
+ * Casos de accesibilidad (prueba nueva tests/ui/grid-accesible.test.ts):
+ * - al crear: solo kick paso 0 tiene tabindex="0"; las otras 63 celdas "-1"
+ * - ArrowRight en kick/0 -> kick/1 tiene tabindex="0", es document.activeElement
+ *   y kick/0 pasa a "-1"; ArrowLeft en kick/0 -> se queda en kick/0
+ * - ArrowDown en kick/3 -> clap/3 enfocada; ArrowUp en kick/3 -> se queda
+ * - End en clap/2 -> clap/15; Home -> clap/0
+ * - marcarErrores([{pista:"clap",paso:4}]) -> aria-label "Clap paso 5, equivocada";
+ *   limpiarErrores -> "Clap paso 5"
+ * - la raíz y cada fila tienen role="group"; la fila kick aria-label "Bombo"
  */
 export function crearCuadriculaUI(
   pistas: readonly PistaDef[],

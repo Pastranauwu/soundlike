@@ -85,7 +85,7 @@ describe("crearPantallaJuego", () => {
     expect(elemento.querySelectorAll(".cuadricula__celda")).toHaveLength(64);
     expect(buscar(".juego__play").textContent).toBe("Escuchar");
     expect(buscar(".juego__comprobar").textContent).toBe("Comprobar");
-    expect(buscar(".juego__ayuda").hidden).toBe(true);
+    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(true);
     expect(buscar(".juego__marcador").textContent).toBe("Nivel 1 · Puntos 0 · Racha 0");
     expect(buscar(".juego__mensaje").getAttribute("aria-live")).toBe("polite");
     expect(buscar<HTMLAnchorElement>(".juego__volver").getAttribute("href")).toBe("#/");
@@ -155,19 +155,19 @@ describe("crearPantallaJuego", () => {
     expect(buscar(".juego__mensaje").textContent).toBe(MENSAJE_FALLO);
   });
 
-  it("un fallo muestra el mensaje de fallo y la ayuda sigue oculta", () => {
+  it("un fallo muestra el mensaje de fallo y la ayuda sigue deshabilitada", () => {
     const { buscar } = montar();
     fallar(buscar, 1);
     expect(buscar(".juego__mensaje").textContent).toBe(MENSAJE_FALLO);
-    expect(buscar(".juego__ayuda").hidden).toBe(true);
+    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(true);
   });
 
-  it("3 fallos seguidos muestran el botón Escuchar el correcto", () => {
+  it("3 fallos seguidos habilitan el botón Escuchar el correcto", () => {
     const { buscar } = montar();
     fallar(buscar, 2);
-    expect(buscar(".juego__ayuda").hidden).toBe(true);
+    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(true);
     fallar(buscar, 1);
-    expect(buscar(".juego__ayuda").hidden).toBe(false);
+    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(false);
     expect(buscar(".juego__ayuda").textContent).toBe("Escuchar el correcto");
   });
 

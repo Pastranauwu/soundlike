@@ -18,6 +18,9 @@ import { crearPantallaJuego } from "./games/arregla-el-beat/screen";
  * - iniciarEnrutador(root, rutas) con:
  *   "#/" -> crearMenu()
  *   "#/arregla-el-beat" -> crearPantallaJuego().elemento
+ *   "#/tutoriales" -> crearPantallaTutoriales([obtenerTutorial()])
+ *     (de src/screens/tutoriales.ts y src/games/arregla-el-beat/tutorial.ts)
+ *   "#/acerca-de" -> crearPantallaAcerca() (de src/screens/acerca.ts)
  * - Cada navegación crea la vista de nuevo (el enrutador descarta la anterior).
  * Quién lo usa: el autoarranque de abajo y las pruebas de integración.
  * Las pruebas mockean el módulo "tone" (vi.mock), porque la pantalla crea por
@@ -27,6 +30,10 @@ import { crearPantallaJuego } from "./games/arregla-el-beat/screen";
  *   contiene el menú (h1 "Soundlike")
  * - con hash "#/arregla-el-beat" -> root contiene .juego con 4 pistas x 16 celdas
  * - con hash "#/cualquier-cosa" -> se ve el menú y location.hash queda "#/"
+ * Casos nuevos (prueba nueva tests/main-rutas.test.ts, con "tone" mockeado):
+ * - hash "#/tutoriales" -> h1 "Tutoriales" y un botón "Ver tutorial"
+ * - hash "#/acerca-de" -> h1 "Acerca de Soundlike"
+ * - hash "#/arregla-el-beat" con localStorage vacío -> se ve el [role="dialog"] del tutorial
  */
 export function iniciarApp(root: HTMLElement): void {
   iniciarEnrutador(root, {

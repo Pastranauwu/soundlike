@@ -32,6 +32,8 @@ BASE_URL=http://localhost:5173 CAPTURAS=capturas npm run capturas
 La fuente de verdad es [ARCHITECTURE.md](ARCHITECTURE.md). Resumen:
 
 - `src/core/` — teoría, secuenciador, puntaje (puros), batería y reproductor (Tone.js).
-- `src/ui/` — tema (`theme.css`), estilos (`app.css`), enrutador hash y cuadrícula reutilizable.
-- `src/screens/` — menú principal.
-- `src/games/arregla-el-beat/` — banco de beats, romper, feedback, lógica de rondas y pantalla.
+- `src/ui/` — tema (`theme.css`), estilos (`app.css`), enrutador hash, cuadrícula y tutorial reutilizables.
+- `src/screens/` — menú principal, Tutoriales y Acerca de.
+- `src/games/arregla-el-beat/` — banco de beats, romper, feedback, lógica de rondas, tutorial y pantalla.
+
+Rutas: `#/` (menú), `#/arregla-el-beat`, `#/tutoriales`, `#/acerca-de`.
