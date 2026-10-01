@@ -11,6 +11,7 @@
  *     <button type="button" class="menu__tutoriales">Tutoriales</button>
  *     <button type="button" class="menu__acerca">Acerca de</button>
  *   </div>
+ *   <p class="menu__teoria">¿Nuevo en la música? En <a href="#/tutoriales">Tutoriales</a> hay teoría...</p>
  *   <nav class="menu__tarjetas" aria-label="Juegos">
  *     <a class="tarjeta" href="#/arregla-el-beat">
  *       <strong>Arregla el beat</strong><span>descripción corta</span>
@@ -30,10 +31,12 @@
  * Contenido fijo:
  * - Botones "Tutoriales" (clic -> location.hash = "#/tutoriales") y
  *   "Acerca de" (clic -> location.hash = "#/acerca-de"), antes de las tarjetas.
+ * - Párrafo .menu__teoria: "¿Nuevo en la música? En Tutoriales hay teoría en 2 pantallas: el beat, las escalas y los acordes."
+ *   con enlace real a "#/tutoriales".
  * - Tarjeta activa: "Arregla el beat", enlace a "#/arregla-el-beat", con
  *   descripción "Encuentra y corrige los errores del ritmo." y además:
- *   .tarjeta__objetivo = "Cómo se gana: corrige los golpes equivocados hasta que el beat suene igual que el original."
- *   .tarjeta__aprendes = "Aprendes: dónde van el bombo, el clap y los hi-hats en cada estilo."
+ *   .tarjeta__objetivo = "Cómo se gana: escucha el beat roto a ciegas y corrige la cuadrícula hasta que suene igual que el original."
+ *   .tarjeta__aprendes = "Aprendes: pulso, compás de 4 tiempos, backbeat y dónde van el bombo, el clap y los hi-hats en cada estilo."
  * - Tres tarjetas inactivas (span, sin enlace): "Sigue el ritmo",
  *   "Adivina la nota" y "Oído relativo", cada una con el texto "Próximamente".
  * Casos:
@@ -42,12 +45,19 @@
  * - el título h1 dice "Soundlike"
  * - hay un <button> "Tutoriales"; al hacer clic location.hash pasa a "#/tutoriales"
  * - hay un <button> "Acerca de"; al hacer clic location.hash pasa a "#/acerca-de"
- * - la tarjeta activa contiene "Cómo se gana:" y "Aprendes:"
+ * - la tarjeta activa contiene "Cómo se gana:" y "Aprendes:" con la teoría del beat
+ * - hay un p.menu__teoria con enlace a "#/tutoriales"
  */
 export function crearMenu(): HTMLElement {
   const menu = document.createElement("main");
   menu.className = "menu";
-  menu.append(crearTitulo(), crearSubtitulo(), crearAcciones(), crearTarjetas());
+  menu.append(
+    crearTitulo(),
+    crearSubtitulo(),
+    crearAcciones(),
+    crearTeoria(),
+    crearTarjetas()
+  );
   return menu;
 }
 
@@ -90,6 +100,28 @@ function crearAcciones(): HTMLElement {
   return acciones;
 }
 
+function crearTeoria(): HTMLElement {
+  const parrafo = document.createElement("p");
+  parrafo.className = "menu__teoria";
+
+  const texto1 = document.createTextNode(
+    "¿Nuevo en la música? En "
+  );
+  parrafo.append(texto1);
+
+  const enlace = document.createElement("a");
+  enlace.href = "#/tutoriales";
+  enlace.textContent = "Tutoriales";
+  parrafo.append(enlace);
+
+  const texto2 = document.createTextNode(
+    " hay teoría en 2 pantallas: el beat, las escalas y los acordes."
+  );
+  parrafo.append(texto2);
+
+  return parrafo;
+}
+
 function crearTarjetas(): HTMLElement {
   const tarjetas = document.createElement("nav");
   tarjetas.className = "menu__tarjetas";
@@ -107,13 +139,13 @@ function crearTarjetaActiva(): HTMLElement {
   const objetivo = document.createElement("span");
   objetivo.className = "tarjeta__objetivo";
   objetivo.textContent =
-    "Cómo se gana: corrige los golpes equivocados hasta que el beat suene igual que el original.";
+    "Cómo se gana: escucha el beat roto a ciegas y corrige la cuadrícula hasta que suene igual que el original.";
   tarjeta.append(objetivo);
 
   const aprendes = document.createElement("span");
   aprendes.className = "tarjeta__aprendes";
   aprendes.textContent =
-    "Aprendes: dónde van el bombo, el clap y los hi-hats en cada estilo.";
+    "Aprendes: pulso, compás de 4 tiempos, backbeat y dónde van el bombo, el clap y los hi-hats en cada estilo.";
   tarjeta.append(aprendes);
 
   return tarjeta;
