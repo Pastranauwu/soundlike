@@ -14,18 +14,22 @@ import type { Tutorial } from "../../ui/types";
  *   1. titulo = "La cuadrícula". texto: cada fila es un instrumento (Bombo, Clap,
  *      Hi-hat cerrado, Hi-hat abierto) y cada una de las 16 columnas es un paso
  *      del compás; amarillo = suena. puntos (3): los números en negrita 1, 5, 9 y 13
- *      son los tiempos 1, 2, 3 y 4; la columna iluminada es el paso que suena;
- *      toca una celda (o usa Enter/Espacio) para encenderla o apagarla.
- *   2. titulo = "Controles y objetivo". texto: escucha el beat roto y arréglalo.
- *      puntos (5): "Escuchar" / "Pausar" arranca o detiene el sonido; el slider
- *      cambia el tempo; "Comprobar" revisa tu cuadrícula; "Reiniciar" la devuelve
- *      a como empezó la ronda; tras 3 intentos fallidos "Escuchar el correcto"
- *      toca el original y marca en rojo las celdas equivocadas. Con teclado: Tab
- *      para moverte entre controles y flechas dentro de la cuadrícula.
+ *      son los tiempos 1, 2, 3 y 4; solo puedes editarla en pausa: mientras suena
+ *      un beat la cuadrícula se oculta; toca una celda (o usa Enter/Espacio) para
+ *      encenderla o apagarla.
+ *   2. titulo = "Controles y objetivo". texto = "Escucha el beat roto, compáralo con el correcto y arregla la cuadrícula."
+ *      puntos (exactamente 5): "Escuchar el beat roto" toca tu versión: la cuadrícula
+ *      se oculta y solo ves iluminado el paso que suena; "Escuchar el correcto" toca
+ *      el beat original cuando quieras, también a ciegas; "Pausar" detiene el sonido
+ *      y devuelve la cuadrícula para editarla; el slider cambia el tempo; "Comprobar"
+ *      revisa tu cuadrícula y te dice qué instrumento falla y si sobra o falta un golpe;
+ *      "Reiniciar" la devuelve al beat roto; tras 3 intentos fallidos las celdas
+ *      equivocadas se marcan en rojo.
  * Casos:
  * - obtenerTutorial().id -> "arregla-el-beat"; .ruta -> "#/arregla-el-beat"
  * - obtenerTutorial().pasos.length -> 2; pasos[0].titulo -> "La cuadrícula"
  * - obtenerTutorial().objetivo contiene "3 aciertos seguidos"
+ * - pasos[1].puntos.length -> 5
  * - todos los textos no vacíos; ningún paso con más de 5 puntos
  */
 export function obtenerTutorial(): Tutorial {
@@ -43,19 +47,19 @@ export function obtenerTutorial(): Tutorial {
         texto: "Cada fila es un instrumento (Bombo, Clap, Hi-hat cerrado, Hi-hat abierto) y cada una de las 16 columnas es un paso del compás; amarillo = suena.",
         puntos: [
           "Los números en negrita 1, 5, 9 y 13 son los tiempos 1, 2, 3 y 4.",
-          "La columna iluminada es el paso que suena.",
+          "Solo puedes editarla en pausa: mientras suena un beat la cuadrícula se oculta.",
           "Toca una celda (o usa Enter/Espacio) para encenderla o apagarla.",
         ],
       },
       {
         titulo: "Controles y objetivo",
-        texto: "Escucha el beat roto y arréglalo.",
+        texto: "Escucha el beat roto, compáralo con el correcto y arregla la cuadrícula.",
         puntos: [
-          '"Escuchar" / "Pausar" arranca o detiene el sonido.',
-          "El slider cambia el tempo.",
-          '"Comprobar" revisa tu cuadrícula.',
-          '"Reiniciar" la devuelve a como empezó la ronda.',
-          'Tras 3 intentos fallidos "Escuchar el correcto" toca el original y marca en rojo las celdas equivocadas.',
+          '"Escuchar el beat roto" toca tu versión: la cuadrícula se oculta y solo ves iluminado el paso que suena.',
+          '"Escuchar el correcto" toca el beat original cuando quieras, también a ciegas.',
+          '"Pausar" detiene el sonido y devuelve la cuadrícula para editarla; el slider cambia el tempo.',
+          '"Comprobar" revisa tu cuadrícula y te dice qué instrumento falla y si sobra o falta un golpe.',
+          '"Reiniciar" la devuelve al beat roto; tras 3 intentos fallidos las celdas equivocadas se marcan en rojo.',
         ],
       },
     ],
