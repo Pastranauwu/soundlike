@@ -8,6 +8,15 @@
   --color-error: #ef4444;
   --color-texto: #ffffff;
   --color-texto-suave: #b4b4be;
+  --color-foco: #facc15;
+  --color-foco-contraste: #ffffff;
+  --color-borde: #3a3a44;
+  --color-fondo-capa: rgba(0, 0, 0, 0.7);
   --radio: 8px;
+  --tactil-min: 44px;
+  --celda-min: 40px;
+  --ancho-max: 900px;
+  --espacio: 16px;
+  --tamano-texto: 18px;
   --fuente: system-ui, "Segoe UI", Roboto, sans-serif;
 }
