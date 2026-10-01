@@ -201,13 +201,13 @@ describe("crearPantallaTutoriales", () => {
     expect(h2s).toEqual(["Juego 1", "Juego 2"]);
   });
 
-  it("muestra intro: 'Cada tutorial dura...'", () => {
+  it("muestra intro: 'cada uno dura 1 o 2 pantallas...'", () => {
     const tutorial = crearTutorialFake();
     const pantalla = crearPantallaTutoriales([tutorial]);
     contenedor.appendChild(pantalla);
 
     const intro = pantalla.querySelector(".tutoriales__intro");
-    expect(intro?.textContent).toContain("Cada tutorial dura 1 o 2 pantallas");
+    expect(intro?.textContent).toContain("cada uno dura 1 o 2 pantallas");
   });
 
   it("estructura principal: <main class='tutoriales'>", () => {
