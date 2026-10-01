@@ -29,5 +29,35 @@ import type { Tutorial } from "../../ui/types";
  * - todos los textos no vacíos; ningún paso con más de 5 puntos
  */
 export function obtenerTutorial(): Tutorial {
-  throw new Error("devclean: sin implementar");
+  return {
+    id: "arregla-el-beat",
+    juego: "Arregla el beat",
+    ruta: "#/arregla-el-beat",
+    objetivo:
+      "Encuentra los golpes equivocados y corrige la cuadrícula hasta que suene igual que el original. En el nivel N hay N errores; 3 aciertos seguidos suben de nivel.",
+    aprendes:
+      "Dónde va cada instrumento de la batería en el hip-hop, el boom bap, el reggaetón, el house y el rock.",
+    pasos: [
+      {
+        titulo: "La cuadrícula",
+        texto: "Cada fila es un instrumento (Bombo, Clap, Hi-hat cerrado, Hi-hat abierto) y cada una de las 16 columnas es un paso del compás; amarillo = suena.",
+        puntos: [
+          "Los números en negrita 1, 5, 9 y 13 son los tiempos 1, 2, 3 y 4.",
+          "La columna iluminada es el paso que suena.",
+          "Toca una celda (o usa Enter/Espacio) para encenderla o apagarla.",
+        ],
+      },
+      {
+        titulo: "Controles y objetivo",
+        texto: "Escucha el beat roto y arréglalo.",
+        puntos: [
+          '"Escuchar" / "Pausar" arranca o detiene el sonido.',
+          "El slider cambia el tempo.",
+          '"Comprobar" revisa tu cuadrícula.',
+          '"Reiniciar" la devuelve a como empezó la ronda.',
+          'Tras 3 intentos fallidos "Escuchar el correcto" toca el original y marca en rojo las celdas equivocadas.',
+        ],
+      },
+    ],
+  };
 }
