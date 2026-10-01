@@ -3,3 +3,7 @@ dist/
 .env
 capturas/
 *.local
+.devclean/*
+!.devclean/historial/
+!.devclean/index.md
+.agents/

@@ -1,0 +1,78 @@
+feature: base de minijuegos musicales + juego "Arregla el beat"
+
+requirements:
+  functional:
+    # --- proyecto ---
+    - id: proyecto-base
+      texto: proyecto web desde cero con Vite + TypeScript + Tone.js + Vitest; scripts npm dev, build y test
+    - id: rutas
+      texto: "rutas con hash: #/ (menú principal) y #/arregla-el-beat; una ruta desconocida regresa al menú"
+
+    # --- core (reutilizable por juegos futuros) ---
+    - id: core-teoria
+      texto: "src/core/theory.ts: nota a frecuencia (A4 = 440 Hz), escalas mayor y menor natural, acordes mayor y menor"
+    - id: core-secuenciador
+      texto: "src/core/sequencer.ts: cuadrícula de N pistas x 16 pasos; activar y desactivar paso; tempo de 60 a 180 bpm"
+    - id: core-bateria
+      texto: "src/core/drums.ts: kick, clap, closed hat y open hat sintetizados con Tone.js, sin archivos de audio"
+    - id: core-reproductor
+      texto: "src/core/player.ts: reproduce la cuadrícula en loop, expone el paso actual y permite play, pausa y cambio de tempo"
+    - id: core-puntaje
+      texto: "src/core/scoring.ts: puntaje por ronda, racha de aciertos y nivel actual"
+    - id: core-cuadricula-ui
+      texto: "componente de cuadrícula reutilizable: nombre de pista a la izquierda, 16 celdas por pista, clic activa o desactiva, columna del paso actual resaltada, números 1-16 abajo"
+    - id: menu
+      texto: menú principal con tarjetas por juego; "Arregla el beat" activo y el resto como "próximamente"
+
+    # --- juego: Arregla el beat ---
+    - id: beat-banco
+      texto: "banco de 10 beats de 16 pasos y 4 pistas (hip-hop, boom bap, reggaetón, house, rock), cada uno con nombre, género y tempo"
+    - id: beat-romper
+      texto: "breakBeat(beat, nErrores, semilla) genera una versión rota agregando o quitando golpes"
+    - id: beat-niveles
+      texto: "nivel 1 = 1 error, nivel 2 = 2 errores, nivel 3 = 3 errores; 3 aciertos seguidos suben de nivel"
+    - id: beat-jugar
+      texto: el jugador escucha el beat roto, edita la cuadrícula y presiona "Comprobar"
+    - id: beat-feedback
+      texto: al acertar, una frase explica el error (ej. "el clap va en los pasos 5 y 13, los tiempos 2 y 4")
+    - id: beat-ayuda
+      texto: tras 3 intentos fallidos aparece el botón "Escuchar el correcto" y se marcan las celdas equivocadas
+    - id: beat-tutoriales
+      texto: "tutoriales de 1-2 pantallas explicando la cuadrícula, los controles y el objetivo del juego; se pueden saltar y la forma de ganar o explicar de lo que se tiene que aprender se ve en el menú y en la pantalla de juego"
+    - id: beat-tutorial didactico
+      texto: "tutoriales didácticos de 1-2 pantallas explicando la teoría musical detrás de los beats, escalas y acordes; se pueden saltar y la forma de ganar o explicar de lo que se tiene que aprender se ve en el menú y en la pantalla de juego"
+    - id: beat-reproducion-del-beat-a-arreglar
+      texto: "el beat roto se reproduce con un boton, sin mostrar la cuadricula pero si el paso actual; el beat original se puede escuchar con el boton 'Escuchar el correcto'"
+
+
+    # --- diseño ---
+    - id: diseno
+      texto: "tema oscuro: fondo gris muy oscuro, celdas gris medio, celdas activas amarillo, texto blanco, tipografía sans-serif grande; controles arriba (play/pausa, tempo con slider, Comprobar), cuadrícula al centro, puntaje y nivel en la esquina superior derecha"
+    - id: responsivo
+      texto: en celular la cuadrícula ocupa todo el ancho y las celdas siguen siendo tocables (mínimo 32 px); en escritorio queda centrada con ancho máximo de 900 px
+    - id: accesibilidad
+      texto: "todas las funciones del juego son accesibles con teclado y pantalla táctil; los botones tienen foco visible y se puede navegar con tabulador; el juego es usable con lector de pantalla"
+    - id: mejorar interfaz
+      texto: "el juego tiene un botón de 'Reiniciar' y un botón de 'Escuchar el correcto'; el menú tiene un botón de 'Tutoriales' y un botón de 'Acerca de'"
+
+rules:
+  - theory, sequencer, scoring y breakBeat son funciones puras; no importan Tone.js ni el DOM
+  - el audio solo arranca después del primer clic del usuario (regla de los navegadores)
+  - toda la interfaz en español
+  - los juegos futuros viven en src/games/<juego>/; src/core no conoce a ningún juego
+
+acceptance:
+  - noteToFreq("A4") devuelve 440 y noteToFreq("C4") devuelve 261.63 (±0.01)
+  - escala mayor de C devuelve C D E F G A B; acorde menor de A devuelve A C E
+  - un tempo fuera de 60-180 lanza error
+  - con la misma semilla, breakBeat devuelve siempre el mismo resultado
+  - breakBeat genera exactamente nErrores celdas distintas al original
+  - corregir la cuadrícula hasta igualar el original cuenta como acierto y suma a la racha
+  - el menú se ve en celular y escritorio, y la cuadrícula del juego muestra 4 pistas x 16 pasos
+  - la validación de luego debe presentar los resultados de la jugada y el porque el jugador falló de forma clara y comprensible
+  - criterion: pruebas unitarias
+    command: npx vitest run
+  - criterion: compila
+    command: npm run build
+
+ship: true

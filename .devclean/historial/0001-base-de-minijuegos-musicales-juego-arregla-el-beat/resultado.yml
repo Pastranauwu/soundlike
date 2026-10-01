@@ -1,0 +1,82 @@
+fecha: "2026-10-01"
+rama: devclean/_entrega
+commit: 1e1c31133db739453cb8697ac85ec2c0ecf15b13
+estado: probado
+criterios:
+    - criterio: noteToFreq("A4") devuelve 440 y noteToFreq("C4") devuelve 261.63 (±0.01)
+      resultado: sin comando
+    - criterio: escala mayor de C devuelve C D E F G A B; acorde menor de A devuelve A C E
+      resultado: sin comando
+    - criterio: un tempo fuera de 60-180 lanza error
+      resultado: sin comando
+    - criterio: con la misma semilla, breakBeat devuelve siempre el mismo resultado
+      resultado: sin comando
+    - criterio: breakBeat genera exactamente nErrores celdas distintas al original
+      resultado: sin comando
+    - criterio: corregir la cuadrícula hasta igualar el original cuenta como acierto y suma a la racha
+      resultado: sin comando
+    - criterio: el menú se ve en celular y escritorio, y la cuadrícula del juego muestra 4 pistas x 16 pasos
+      resultado: sin comando
+    - criterio: la validación de luego debe presentar los resultados de la jugada y el porque el jugador falló de forma clara y comprensible
+      resultado: sin comando
+    - criterio: pruebas unitarias
+      comando: npx vitest run
+      resultado: pasó
+    - criterio: compila
+      comando: npm run build
+      resultado: pasó
+    - comando: npx tsc --noEmit
+      resultado: pasó
+    - comando: docker compose build
+      resultado: pasó
+    - comando: npx vitest run tests/integracion-escucha.test.ts
+      resultado: pasó
+tareas:
+    - id: T-030
+      titulo: esqueleto · base de minijuegos musicales + juego "Arregla el beat"
+      estado: lista
+      intentos: 0
+    - id: T-031
+      titulo: indicador de paso actual sin patrón
+      estado: lista
+      intentos: 1
+    - id: T-032
+      titulo: 'estado de la escucha: roto, correcto o pausa'
+      estado: lista
+      intentos: 1
+    - id: T-033
+      titulo: resultado de la jugada y por qué falló
+      estado: lista
+      intentos: 1
+    - id: T-034
+      titulo: 'tutorial didáctico: teoría del beat'
+      estado: lista
+      intentos: 1
+    - id: T-035
+      titulo: 'tutorial didáctico: escalas y acordes'
+      estado: lista
+      intentos: 1
+    - id: T-036
+      titulo: 'tutorial del juego: actualizar la pantalla de controles'
+      estado: lista
+      intentos: 1
+    - id: T-037
+      titulo: 'pantalla tutoriales: tutoriales de teoría sin enlace jugar'
+      estado: lista
+      intentos: 1
+    - id: T-038
+      titulo: 'menú: lo que se aprende de teoría en la tarjeta del juego'
+      estado: lista
+      intentos: 1
+    - id: T-039
+      titulo: 'pantalla del juego: escucha a ciegas, resultado de la jugada, teoría y su diseño'
+      estado: lista
+      intentos: 2
+    - id: T-040
+      titulo: 'cableado: tutoriales didácticos en la ruta de tutoriales'
+      estado: lista
+      intentos: 1
+    - id: T-041
+      titulo: 'prueba de punta a punta: escucha a ciegas, resultado y tutoriales didácticos'
+      estado: lista
+      intentos: 1
