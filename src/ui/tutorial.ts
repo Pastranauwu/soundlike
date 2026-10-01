@@ -73,5 +73,174 @@ export interface TutorialUI {
  * - pasos = [] -> lanza Error("El tutorial no tiene pantallas")
  */
 export function crearTutorialUI(tutorial: Tutorial, opciones: OpcionesTutorialUI): TutorialUI {
-  throw new Error("devclean: sin implementar");
+  if (tutorial.pasos.length === 0) {
+    throw new Error("El tutorial no tiene pantallas");
+  }
+
+  const elementoConFocoPrevio = document.activeElement as HTMLElement | null;
+  const idDialogo = tutorial.id;
+  let pasoActual = 0;
+  let cerrado = false;
+
+  const raiz = document.createElement("div");
+  raiz.className = "tutorial";
+  raiz.setAttribute("role", "dialog");
+  raiz.setAttribute("aria-modal", "true");
+  raiz.setAttribute("aria-labelledby", `tutorial-titulo-${idDialogo}`);
+  raiz.setAttribute("aria-describedby", `tutorial-texto-${idDialogo}`);
+
+  const panel = document.createElement("div");
+  panel.className = "tutorial__panel";
+  raiz.appendChild(panel);
+
+  const parrafoJuego = document.createElement("p");
+  parrafoJuego.className = "tutorial__juego";
+  parrafoJuego.textContent = `${tutorial.juego} · Tutorial`;
+  panel.appendChild(parrafoJuego);
+
+  const parrafoProgreso = document.createElement("p");
+  parrafoProgreso.className = "tutorial__progreso";
+  panel.appendChild(parrafoProgreso);
+
+  const titulo = document.createElement("h2");
+  titulo.className = "tutorial__titulo";
+  titulo.id = `tutorial-titulo-${idDialogo}`;
+  titulo.tabIndex = -1;
+  panel.appendChild(titulo);
+
+  const texto = document.createElement("p");
+  texto.className = "tutorial__texto";
+  texto.id = `tutorial-texto-${idDialogo}`;
+  panel.appendChild(texto);
+
+  const listaPuntos = document.createElement("ul");
+  listaPuntos.className = "tutorial__puntos";
+  panel.appendChild(listaPuntos);
+
+  const objetivo = document.createElement("p");
+  objetivo.className = "tutorial__objetivo";
+  const fuerteObjetivo = document.createElement("strong");
+  fuerteObjetivo.textContent = "Cómo se gana:";
+  objetivo.appendChild(fuerteObjetivo);
+  objetivo.append(` ${tutorial.objetivo}`);
+  panel.appendChild(objetivo);
+
+  const aprendes = document.createElement("p");
+  aprendes.className = "tutorial__aprendes";
+  const fuerteAprendes = document.createElement("strong");
+  fuerteAprendes.textContent = "Aprendes:";
+  aprendes.appendChild(fuerteAprendes);
+  aprendes.append(` ${tutorial.aprendes}`);
+  panel.appendChild(aprendes);
+
+  const acciones = document.createElement("div");
+  acciones.className = "tutorial__acciones";
+  panel.appendChild(acciones);
+
+  const botonSaltar = document.createElement("button");
+  botonSaltar.type = "button";
+  botonSaltar.className = "tutorial__saltar";
+  botonSaltar.textContent = "Saltar tutorial";
+  acciones.appendChild(botonSaltar);
+
+  const botonAnterior = document.createElement("button");
+  botonAnterior.type = "button";
+  botonAnterior.className = "tutorial__anterior";
+  botonAnterior.textContent = "Anterior";
+  acciones.appendChild(botonAnterior);
+
+  const botonSiguiente = document.createElement("button");
+  botonSiguiente.type = "button";
+  botonSiguiente.className = "tutorial__siguiente";
+  acciones.appendChild(botonSiguiente);
+
+  function renderizarPaso(): void {
+    const paso = tutorial.pasos[pasoActual];
+    const esUltimoPaso = pasoActual === tutorial.pasos.length - 1;
+
+    parrafoProgreso.textContent = `Pantalla ${pasoActual + 1} de ${tutorial.pasos.length}`;
+    titulo.textContent = paso.titulo;
+    texto.textContent = paso.texto;
+
+    listaPuntos.replaceChildren(
+      ...paso.puntos.map((punto) => {
+        const item = document.createElement("li");
+        item.textContent = punto;
+        return item;
+      }),
+    );
+
+    botonAnterior.hidden = pasoActual === 0;
+    botonSiguiente.textContent = esUltimoPaso ? "¡A jugar!" : "Siguiente";
+  }
+
+  function cerrar(motivo: MotivoCierreTutorial): void {
+    if (cerrado) return;
+    cerrado = true;
+    raiz.remove();
+    opciones.alCerrar(motivo);
+    if (elementoConFocoPrevio && document.contains(elementoConFocoPrevio)) {
+      elementoConFocoPrevio.focus();
+    }
+  }
+
+  function irAPaso(indice: number): void {
+    pasoActual = indice;
+    renderizarPaso();
+    titulo.focus();
+  }
+
+  botonSiguiente.addEventListener("click", () => {
+    if (pasoActual === tutorial.pasos.length - 1) {
+      cerrar("terminar");
+      return;
+    }
+    irAPaso(pasoActual + 1);
+  });
+
+  botonAnterior.addEventListener("click", () => {
+    irAPaso(pasoActual - 1);
+  });
+
+  botonSaltar.addEventListener("click", () => {
+    cerrar("saltar");
+  });
+
+  raiz.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape") {
+      cerrar("saltar");
+      return;
+    }
+    if (evento.key === "Tab") {
+      const focosPosibles = Array.from(acciones.querySelectorAll<HTMLButtonElement>("button")).filter(
+        (boton) => !boton.hidden,
+      );
+      const primero = focosPosibles[0];
+      const ultimo = focosPosibles[focosPosibles.length - 1];
+      if (evento.shiftKey && document.activeElement === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    }
+  });
+
+  renderizarPaso();
+
+  return {
+    elemento: raiz,
+    get pasoActual() {
+      return pasoActual;
+    },
+    abrir(): void {
+      pasoActual = 0;
+      renderizarPaso();
+      titulo.focus();
+    },
+    destruir(): void {
+      raiz.remove();
+    },
+  };
 }
