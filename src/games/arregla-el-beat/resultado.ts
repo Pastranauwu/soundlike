@@ -6,6 +6,9 @@
  * .juego__resultado después de cada "Comprobar".
  */
 import type { Cuadricula } from "../../core/types";
+import { PISTAS_BATERIA } from "../../core/types";
+import { celdasDistintas } from "../../core/sequencer";
+import { explicarError } from "./feedback";
 import type { Beat } from "./types";
 
 /** Lo que ve el jugador tras pulsar "Comprobar". Todo en español. */
@@ -20,40 +23,14 @@ export interface ResultadoJugada {
 }
 
 /**
- * Evalúa la jugada.
- * Entradas: original y roto = beats de la ronda (estado.beatOriginal / estado.beatRoto);
- *   actual = cuadrícula del jugador; intentosFallidos = fallos de la ronda CONTANDO
- *   este (1 en el primer fallo); se ignora si acierta.
- * Llama a: celdasDistintas (src/core/sequencer.ts), explicarError (./feedback.ts),
- *   PISTAS_BATERIA (src/core/types.ts) para nombres y orden. No lanza.
- * Quién lo usa: screen.ts en "Comprobar" (después de juego.comprobar).
- * Idea:
- * - dif = celdasDistintas(original.cuadricula, actual). Vacío -> acierto:
- *   titulo "¡Correcto!", resumen = explicarError(original, roto), motivos [].
- * - Fallo: titulo "Todavía no suena igual"; resumen "Hay 1 celda distinta al beat correcto."
- *   / "Hay N celdas distintas al beat correcto." (N = dif.length).
- * - Por pista, en orden de PISTAS_BATERIA, solo las que tienen diferencias:
- *   sobra = actual true y original false; falta = lo contrario. Línea:
- *   "<Nombre>: <partes unidas con ' y '>." con partes en orden sobra, falta:
- *   "sobra 1 golpe"/"sobran 2 golpes", "falta 1 golpe"/"faltan 2 golpes".
- * - Detalle de lugar pegado a cada parte según intentosFallidos (pasos visibles = índice+1):
- *   1 -> nada. 2 -> " en la primera mitad (pasos 1-8)" | " en la segunda mitad (pasos 9-16)"
- *   | " en las dos mitades". >=3 -> " en el paso 7" | " en los pasos 3 y 7" | " en los pasos 3, 7 y 11".
- * - Avisos al final de motivos, en este orden:
- *   si actual es igual a roto.cuadricula: "No cambiaste nada: la cuadrícula sigue igual que el beat roto."
- *   si hay K>0 celdas de dif que en roto estaban bien (roto == original en esa celda):
- *   "Cambiaste 1 celda que ya estaba bien: Reiniciar vuelve al beat roto." (plural:
- *   "Cambiaste K celdas que ya estaban bien: Reiniciar vuelve al beat roto.")
- * - Trampa: pista ausente en actual = fila toda en false.
- * Casos:
- * (en todos: original con clap en pasos 5 y 13; roto = original + clap extra en paso 7)
- * - actual = original -> { acierto: true, titulo: "¡Correcto!", motivos: [] } y resumen = explicarError(original, roto)
- * - actual = roto, intentos 1 -> resumen "Hay 1 celda distinta al beat correcto.";
- *   motivos ["Clap: sobra 1 golpe.", "No cambiaste nada: la cuadrícula sigue igual que el beat roto."]
- * - actual = roto, intentos 2 -> motivos[0] "Clap: sobra 1 golpe en la primera mitad (pasos 1-8)."
- * - actual = roto, intentos 3 -> motivos[0] "Clap: sobra 1 golpe en el paso 7."
- * - actual = roto sin el bombo del paso 1 (que estaba bien), intentos 1 -> resumen "Hay 2 celdas distintas al beat correcto.";
- *   motivos ["Bombo: falta 1 golpe.", "Clap: sobra 1 golpe.", "Cambiaste 1 celda que ya estaba bien: Reiniciar vuelve al beat roto."]
+ * Evalúa la jugada: compara la cuadrícula del jugador (`actual`) contra el
+ * beat original de la ronda y explica por qué falló, si falló.
+ *
+ * `intentosFallidos` cuenta los fallos de la ronda incluyendo este (1 en el
+ * primer fallo) y controla cuánto detalle de ubicación se da por pista: nada
+ * en el primer fallo, la mitad del compás en el segundo, los pasos exactos
+ * a partir del tercero. Una pista ausente en `actual` se trata como fila en
+ * false (el jugador borró todos sus golpes).
  */
 export function evaluarJugada(
   original: Beat,
@@ -61,9 +38,112 @@ export function evaluarJugada(
   actual: Cuadricula,
   intentosFallidos: number,
 ): ResultadoJugada {
-  void original;
-  void roto;
-  void actual;
-  void intentosFallidos;
-  throw new Error("devclean: sin implementar");
+  const dif = celdasDistintas(original.cuadricula, actual);
+
+  if (dif.length === 0) {
+    return {
+      acierto: true,
+      titulo: "¡Correcto!",
+      resumen: explicarError(original, roto),
+      motivos: [],
+    };
+  }
+
+  const resumen = `Hay ${dif.length} celda${dif.length === 1 ? "" : "s"} distinta${
+    dif.length === 1 ? "" : "s"
+  } al beat correcto.`;
+
+  const motivos = construirMotivosPorPista(original, actual, dif, intentosFallidos);
+
+  if (celdasDistintas(roto.cuadricula, actual).length === 0) {
+    motivos.push("No cambiaste nada: la cuadrícula sigue igual que el beat roto.");
+  }
+
+  const celdasYaBien = dif.filter((celda) => {
+    const enRoto = roto.cuadricula[celda.pista]?.[celda.paso] ?? false;
+    const enOriginal = original.cuadricula[celda.pista]?.[celda.paso] ?? false;
+    return enRoto === enOriginal;
+  }).length;
+
+  if (celdasYaBien > 0) {
+    const palabra = celdasYaBien === 1 ? "celda" : "celdas";
+    const verbo = celdasYaBien === 1 ? "estaba" : "estaban";
+    motivos.push(
+      `Cambiaste ${celdasYaBien} ${palabra} que ya ${verbo} bien: Reiniciar vuelve al beat roto.`,
+    );
+  }
+
+  return {
+    acierto: false,
+    titulo: "Todavía no suena igual",
+    resumen,
+    motivos,
+  };
+}
+
+function construirMotivosPorPista(
+  original: Beat,
+  actual: Cuadricula,
+  dif: { pista: string; paso: number }[],
+  intentosFallidos: number,
+): string[] {
+  const motivos: string[] = [];
+
+  for (const pista of PISTAS_BATERIA) {
+    const sobraPasos: number[] = [];
+    const faltaPasos: number[] = [];
+
+    for (const celda of dif) {
+      if (celda.pista !== pista.id) continue;
+      const enActual = actual[pista.id]?.[celda.paso] ?? false;
+      const enOriginal = original.cuadricula[pista.id]?.[celda.paso] ?? false;
+      if (enActual && !enOriginal) {
+        sobraPasos.push(celda.paso + 1);
+      } else if (!enActual && enOriginal) {
+        faltaPasos.push(celda.paso + 1);
+      }
+    }
+
+    if (sobraPasos.length === 0 && faltaPasos.length === 0) continue;
+
+    const partes: string[] = [];
+    if (sobraPasos.length > 0) {
+      partes.push(describirGolpes("sobra", "sobran", sobraPasos, intentosFallidos));
+    }
+    if (faltaPasos.length > 0) {
+      partes.push(describirGolpes("falta", "faltan", faltaPasos, intentosFallidos));
+    }
+    motivos.push(`${pista.nombre}: ${partes.join(" y ")}.`);
+  }
+
+  return motivos;
+}
+
+function describirGolpes(
+  verboSingular: string,
+  verboPlural: string,
+  pasos: number[],
+  intentosFallidos: number,
+): string {
+  const verbo = pasos.length === 1 ? verboSingular : verboPlural;
+  const palabra = pasos.length === 1 ? "golpe" : "golpes";
+  return `${verbo} ${pasos.length} ${palabra}${describirUbicacion(pasos, intentosFallidos)}`;
+}
+
+function describirUbicacion(pasos: number[], intentosFallidos: number): string {
+  if (intentosFallidos <= 1) return "";
+
+  if (intentosFallidos === 2) {
+    const primeraMitad = pasos.some((paso) => paso <= 8);
+    const segundaMitad = pasos.some((paso) => paso > 8);
+    if (primeraMitad && segundaMitad) return " en las dos mitades";
+    return primeraMitad
+      ? " en la primera mitad (pasos 1-8)"
+      : " en la segunda mitad (pasos 9-16)";
+  }
+
+  const ordenados = [...pasos].sort((a, b) => a - b);
+  if (ordenados.length === 1) return ` en el paso ${ordenados[0]}`;
+  if (ordenados.length === 2) return ` en los pasos ${ordenados[0]} y ${ordenados[1]}`;
+  return ` en los pasos ${ordenados.slice(0, -1).join(", ")} y ${ordenados[ordenados.length - 1]}`;
 }
