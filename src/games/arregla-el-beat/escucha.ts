@@ -23,43 +23,40 @@ export interface VistaEscucha {
 
 /**
  * Fuente que queda tras pulsar un botón de escucha.
- * Entradas: actual = lo que suena ahora; pulsada = botón pulsado.
- * Quién lo usa: screen.ts en el clic de .juego__play ("roto") y .juego__ayuda ("correcto").
- * Idea: pulsar el botón de lo que ya suena = pausar ("ninguna"); cualquier otro
- * caso = pasa a sonar la pulsada (cambio directo roto<->correcto sin pausa).
- * Casos:
- * - ("ninguna", "roto") -> "roto"
- * - ("roto", "roto") -> "ninguna"
- * - ("roto", "correcto") -> "correcto"
- * - ("correcto", "correcto") -> "ninguna"
+ * Si actual === pulsada, pausa (devuelve "ninguna"); si no, cambia a pulsada.
  */
 export function alternarEscucha(
   actual: FuenteEscucha,
   pulsada: Exclude<FuenteEscucha, "ninguna">,
 ): FuenteEscucha {
-  void actual;
-  void pulsada;
-  throw new Error("devclean: sin implementar");
+  return actual === pulsada ? "ninguna" : pulsada;
 }
 
 /**
  * Textos y visibilidad para una fuente.
- * Quién lo usa: screen.ts cada vez que cambia la fuente (y al montar con "ninguna").
- * Idea: tabla fija de 3 entradas, textos EXACTOS:
- * - "ninguna": etiquetaRoto "Escuchar el beat roto", etiquetaCorrecto "Escuchar el correcto",
- *   cuadriculaVisible true,
- *   estado "En pausa. Elige qué beat escuchar: el paso que suena se ilumina aquí."
- * - "roto": etiquetaRoto "Pausar", etiquetaCorrecto "Escuchar el correcto", cuadriculaVisible false,
- *   estado "Suena el beat roto. La cuadrícula se oculta mientras escuchas: sigue el paso iluminado."
- * - "correcto": etiquetaRoto "Escuchar el beat roto", etiquetaCorrecto "Pausar", cuadriculaVisible false,
- *   estado "Suena el beat correcto. La cuadrícula se oculta mientras escuchas: sigue el paso iluminado."
- * Devuelve objeto nuevo en cada llamada.
- * Casos:
- * - vistaEscucha("ninguna").cuadriculaVisible -> true; .etiquetaRoto -> "Escuchar el beat roto"
- * - vistaEscucha("roto").etiquetaRoto -> "Pausar"; .cuadriculaVisible -> false
- * - vistaEscucha("correcto").etiquetaCorrecto -> "Pausar"; .estado empieza con "Suena el beat correcto."
+ * Tabla fija de 3 casos: mientras suena algo, la cuadrícula se oculta
+ * y los botones muestran cuál suena (diciendo "Pausar") y el que no.
  */
 export function vistaEscucha(fuente: FuenteEscucha): VistaEscucha {
-  void fuente;
-  throw new Error("devclean: sin implementar");
+  const vistas: Record<FuenteEscucha, VistaEscucha> = {
+    ninguna: {
+      etiquetaRoto: "Escuchar el beat roto",
+      etiquetaCorrecto: "Escuchar el correcto",
+      cuadriculaVisible: true,
+      estado: "En pausa. Elige qué beat escuchar: el paso que suena se ilumina aquí.",
+    },
+    roto: {
+      etiquetaRoto: "Pausar",
+      etiquetaCorrecto: "Escuchar el correcto",
+      cuadriculaVisible: false,
+      estado: "Suena el beat roto. La cuadrícula se oculta mientras escuchas: sigue el paso iluminado.",
+    },
+    correcto: {
+      etiquetaRoto: "Escuchar el beat roto",
+      etiquetaCorrecto: "Pausar",
+      cuadriculaVisible: false,
+      estado: "Suena el beat correcto. La cuadrícula se oculta mientras escuchas: sigue el paso iluminado.",
+    },
+  };
+  return { ...vistas[fuente] };
 }
