@@ -45,5 +45,97 @@ import type { Tutorial } from "../ui/types";
  * - hay un enlace a "#/" con texto "← Volver al menú"
  */
 export function crearPantallaTutoriales(tutoriales: readonly Tutorial[]): HTMLElement {
-  throw new Error("devclean: sin implementar");
+  const raiz = document.createElement("main");
+  raiz.className = "tutoriales";
+
+  const h1 = document.createElement("h1");
+  h1.textContent = "Tutoriales";
+  raiz.appendChild(h1);
+
+  const intro = document.createElement("p");
+  intro.className = "tutoriales__intro";
+  intro.textContent = "Cada tutorial dura 1 o 2 pantallas y lo puedes saltar cuando quieras.";
+  raiz.appendChild(intro);
+
+  let tutorialAbierto: ReturnType<typeof crearTutorialUI> | null = null;
+
+  if (tutoriales.length === 0) {
+    const vacio = document.createElement("p");
+    vacio.className = "tutoriales__vacio";
+    vacio.textContent = "Todavía no hay tutoriales.";
+    raiz.appendChild(vacio);
+  } else {
+    const lista = document.createElement("ul");
+    lista.className = "tutoriales__lista";
+
+    tutoriales.forEach((tutorial) => {
+      const item = document.createElement("li");
+      item.className = "tutoriales__item";
+
+      const h2 = document.createElement("h2");
+      h2.textContent = tutorial.juego;
+      item.appendChild(h2);
+
+      const objetivo = document.createElement("p");
+      objetivo.className = "tutoriales__objetivo";
+      const fuerteObjetivo = document.createElement("strong");
+      fuerteObjetivo.textContent = "Cómo se gana:";
+      objetivo.appendChild(fuerteObjetivo);
+      objetivo.append(` ${tutorial.objetivo}`);
+      item.appendChild(objetivo);
+
+      const aprendes = document.createElement("p");
+      aprendes.className = "tutoriales__aprendes";
+      const fuerteAprendes = document.createElement("strong");
+      fuerteAprendes.textContent = "Aprendes:";
+      aprendes.appendChild(fuerteAprendes);
+      aprendes.append(` ${tutorial.aprendes}`);
+      item.appendChild(aprendes);
+
+      const acciones = document.createElement("div");
+      acciones.className = "tutoriales__acciones";
+      item.appendChild(acciones);
+
+      const botonVer = document.createElement("button");
+      botonVer.type = "button";
+      botonVer.className = "tutoriales__ver";
+      botonVer.textContent = "Ver tutorial";
+      botonVer.setAttribute("aria-label", `Ver tutorial de ${tutorial.juego}`);
+      acciones.appendChild(botonVer);
+
+      const enlaceJugar = document.createElement("a");
+      enlaceJugar.className = "tutoriales__jugar";
+      enlaceJugar.href = tutorial.ruta;
+      enlaceJugar.textContent = "Jugar";
+      acciones.appendChild(enlaceJugar);
+
+      botonVer.addEventListener("click", () => {
+        if (tutorialAbierto) {
+          tutorialAbierto.destruir();
+          tutorialAbierto = null;
+        }
+
+        tutorialAbierto = crearTutorialUI(tutorial, {
+          alCerrar: () => {
+            tutorialAbierto = null;
+          },
+        });
+
+        raiz.appendChild(tutorialAbierto.elemento);
+        tutorialAbierto.abrir();
+      });
+
+      lista.appendChild(item);
+    });
+
+    raiz.appendChild(lista);
+  }
+
+  const enlaceVolver = document.createElement("a");
+  enlaceVolver.className = "tutoriales__volver";
+  enlaceVolver.href = "#/";
+  enlaceVolver.textContent = "← Volver al menú";
+  raiz.appendChild(enlaceVolver);
+
+  return raiz;
 }
