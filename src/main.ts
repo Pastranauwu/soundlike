@@ -12,6 +12,8 @@ import { crearPantallaJuego } from "./games/arregla-el-beat/screen";
 import { crearPantallaTutoriales } from "./screens/tutoriales";
 import { crearPantallaAcerca } from "./screens/acerca";
 import { obtenerTutorial } from "./games/arregla-el-beat/tutorial";
+import { obtenerTutorialTeoriaBeat } from "./games/arregla-el-beat/tutorialTeoria";
+import { obtenerTutorialEscalasAcordes } from "./content/escalasYAcordes";
 
 /**
  * Arranca la aplicación sobre el elemento raíz.
@@ -21,8 +23,8 @@ import { obtenerTutorial } from "./games/arregla-el-beat/tutorial";
  * - iniciarEnrutador(root, rutas) con:
  *   "#/" -> crearMenu()
  *   "#/arregla-el-beat" -> crearPantallaJuego().elemento
- *   "#/tutoriales" -> crearPantallaTutoriales([obtenerTutorial()])
- *     (de src/screens/tutoriales.ts y src/games/arregla-el-beat/tutorial.ts)
+ *   "#/tutoriales" -> crearPantallaTutoriales([obtenerTutorial(), obtenerTutorialTeoriaBeat(), obtenerTutorialEscalasAcordes()])
+ *     (de src/screens/tutoriales.ts, src/games/arregla-el-beat/tutorial.ts, src/games/arregla-el-beat/tutorialTeoria.ts y src/content/escalasYAcordes.ts)
  *   "#/acerca-de" -> crearPantallaAcerca() (de src/screens/acerca.ts)
  * - Cada navegación crea la vista de nuevo (el enrutador descarta la anterior).
  * Quién lo usa: el autoarranque de abajo y las pruebas de integración.
@@ -33,16 +35,18 @@ import { obtenerTutorial } from "./games/arregla-el-beat/tutorial";
  *   contiene el menú (h1 "Soundlike")
  * - con hash "#/arregla-el-beat" -> root contiene .juego con 4 pistas x 16 celdas
  * - con hash "#/cualquier-cosa" -> se ve el menú y location.hash queda "#/"
- * Casos nuevos (prueba nueva tests/main-rutas.test.ts, con "tone" mockeado):
- * - hash "#/tutoriales" -> h1 "Tutoriales" y un botón "Ver tutorial"
- * - hash "#/acerca-de" -> h1 "Acerca de Soundlike"
- * - hash "#/arregla-el-beat" con localStorage vacío -> se ve el [role="dialog"] del tutorial
+ * Casos nuevos (prueba nueva tests/main-tutoriales-teoria.test.ts, con "tone" mockeado):
+ * - hash "#/tutoriales" -> 3 títulos h2 en orden 'Arregla el beat', 'Teoría del beat', 'Escalas y acordes'
+ * - hay 3 botones "Ver tutorial" y exactamente 2 enlaces "Jugar" (ambos a "#/arregla-el-beat")
+ * - clic en "Ver tutorial" de "Escalas y acordes" -> [role="dialog"] que contiene 'C D E F G A B'
+ * - clic en "Ver tutorial" de "Teoría del beat" -> diálogo con 'Pulso, compás y pasos'
+ * - hash "#/" -> menú con h1 "Soundlike"
  */
 export function iniciarApp(root: HTMLElement): void {
   iniciarEnrutador(root, {
     "#/": crearMenu,
     "#/arregla-el-beat": () => crearPantallaJuego().elemento,
-    "#/tutoriales": () => crearPantallaTutoriales([obtenerTutorial()]),
+    "#/tutoriales": () => crearPantallaTutoriales([obtenerTutorial(), obtenerTutorialTeoriaBeat(), obtenerTutorialEscalasAcordes()]),
     "#/acerca-de": crearPantallaAcerca,
   });
 }
