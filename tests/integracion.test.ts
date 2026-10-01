@@ -221,7 +221,7 @@ describe("pantalla del juego - corregir y comprobar", () => {
     const elemento = pantalla.elemento;
     const buscar = <T extends HTMLElement>(selector: string) => elemento.querySelector<T>(selector)!;
 
-    const beatRoto = reproductor.cargar.mock.calls.at(-1)![0];
+    const beatRoto = breakBeat(BEAT, 1, 1).cuadricula;
     const diferencias = celdasDistintas(BEAT.cuadricula, beatRoto);
 
     for (const { pista, paso } of diferencias) {
@@ -234,7 +234,8 @@ describe("pantalla del juego - corregir y comprobar", () => {
 
     buscar(".juego__comprobar").click();
 
-    expect(buscar(".juego__mensaje").textContent).not.toBe("");
+    expect(buscar(".juego__resultado-titulo").textContent).toBe("¡Correcto!");
+    expect(buscar(".juego__resultado-resumen").textContent).not.toBe("");
     expect(buscar(".juego__marcador").textContent).toContain("Racha 1");
   });
 });

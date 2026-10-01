@@ -80,4 +80,54 @@ describe("estilos de la aplicación", () => {
     expect(fueraDelTema).toEqual([]);
     expect(estilos).not.toMatch(/\b(rgba?|hsla?)\(/);
   });
+
+  it("lo oculto en la pantalla de juego gana a cualquier display", () => {
+    const reglas = declaracionesDe(estilos, (selector) => selector.trim().endsWith(".juego [hidden]"));
+    expect(reglas.join("\n")).toMatch(/display:\s*none\s*!important/);
+  });
+
+  it("el botón de escucha que suena es primario: amarillo con texto oscuro", () => {
+    const reglas = declaracionesDe(
+      estilos,
+      (selector) =>
+        selector.includes('.juego__play[aria-pressed="true"]') &&
+        selector.includes('.juego__ayuda[aria-pressed="true"]') &&
+        !selector.includes(":focus"),
+    ).join("\n");
+    expect(reglas).toMatch(/background:\s*var\(--color-activa\)/);
+    expect(reglas).toMatch(/color:\s*var\(--color-fondo\)/);
+  });
+
+  it("el botón de escucha en reposo es secundario y cambia sin transición", () => {
+    const reglas = declaracionesDe(estilos, (selector) =>
+      /\.juego__play,\s*\.juego__ayuda\s*$/.test(selector),
+    ).join("\n");
+    expect(reglas).toMatch(/background:\s*var\(--color-fondo\)/);
+    expect(reglas).toMatch(/color:\s*var\(--color-texto\)/);
+    expect(reglas).toMatch(/transition:\s*none/);
+  });
+
+  it("el paso que suena se pinta con el color activo y texto oscuro", () => {
+    const reglas = declaracionesDe(estilos, (selector) =>
+      selector.includes(".pasos__paso--actual"),
+    ).join("\n");
+    expect(reglas).toMatch(/background:\s*var\(--color-activa\)/);
+    expect(reglas).toMatch(/color:\s*var\(--color-fondo\)/);
+  });
+
+  it("el resultado se distingue por borde: acierto y fallo con su color de tema", () => {
+    const delEstado = (estado: string): string =>
+      declaracionesDe(estilos, (selector) =>
+        selector.includes(`.juego__resultado[data-estado="${estado}"]`),
+      ).join("\n");
+    expect(delEstado("acierto")).toMatch(/border-left-color:\s*var\(--color-acierto\)/);
+    expect(delEstado("fallo")).toMatch(/border-left-color:\s*var\(--color-error\)/);
+  });
+
+  it("el indicador de pasos deja el hueco entre los pasos 8 y 9 en escritorio", () => {
+    const reglas = declaracionesDe(estilos, (selector) =>
+      selector.includes('.pasos__paso[data-paso="8"]'),
+    ).join("\n");
+    expect(reglas).toMatch(/grid-column:\s*10/);
+  });
 });

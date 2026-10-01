@@ -219,7 +219,7 @@ describe("flujo de la app", () => {
     expect(root.querySelector("h1")?.textContent).toBe("Acerca de Soundlike");
   });
 
-  it("'#/arregla-el-beat' con localStorage vacío abre el tutorial, saltarlo enfoca Escuchar y no vuelve a abrirse", () => {
+  it("'#/arregla-el-beat' con localStorage vacío abre el tutorial, saltarlo enfoca Escuchar el beat roto y no vuelve a abrirse", () => {
     montarApp("#/arregla-el-beat");
 
     const dialogo = root.querySelector('[role="dialog"]');
@@ -284,10 +284,10 @@ describe("flujo de la app", () => {
       ).toEqual(estadoInicial);
     });
 
-    it("'Escuchar el correcto' está visible y disabled al inicio, y se habilita tras 3 fallos", () => {
+    it("'Escuchar el correcto' está visible y habilitado desde el inicio y tras 3 fallos", () => {
       const ayuda = root.querySelector<HTMLButtonElement>(".juego__ayuda")!;
       expect(ayuda.hidden).toBe(false);
-      expect(ayuda.disabled).toBe(true);
+      expect(ayuda.disabled).toBe(false);
 
       for (let intento = 0; intento < 3; intento++) {
         botonConTexto(root, "Comprobar").click();
@@ -296,15 +296,19 @@ describe("flujo de la app", () => {
       expect(ayuda.disabled).toBe(false);
     });
 
+    it("'Teoría del beat' abre el tutorial de teoría", () => {
+      botonConTexto(root, "Teoría del beat").click();
+      expect(root.querySelector('[role="dialog"]')?.textContent).toContain("Pulso, compás y pasos");
+    });
+
     it("corregir todas las celdas y 'Comprobar' muestra 'Racha 1' en el marcador", () => {
-      // Falla 3 veces para desbloquear la ayuda y así ver qué celdas corregir.
+      // Falla 3 veces para que se marquen las celdas equivocadas y así ver cuáles corregir.
       for (let intento = 0; intento < 3; intento++) {
         botonConTexto(root, "Comprobar").click();
       }
-      botonConTexto(root, "Escuchar el correcto").click();
 
       const celdasAMarcar = Array.from(
-        root.querySelectorAll<HTMLButtonElement>(".cuadricula__celda--error"),
+        root.querySelectorAll<HTMLButtonElement>('.cuadricula__celda[aria-label$="equivocada"]'),
       );
       for (const boton of celdasAMarcar) {
         boton.click();

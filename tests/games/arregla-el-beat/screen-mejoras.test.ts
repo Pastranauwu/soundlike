@@ -162,8 +162,7 @@ describe("crearPantallaJuego: encabezado", () => {
 
 describe("crearPantallaJuego: reiniciar", () => {
   it("devuelve la cuadrícula al inicio de la ronda sin tocar el marcador", () => {
-    const { reproductor, elemento, buscar } = montar();
-    const cuadriculaRota = reproductor.cargar.mock.calls[0][0];
+    const { elemento, buscar } = montar();
     const celdasAlEmpezar = celdasPulsadas(elemento);
     const marcadorAlEmpezar = buscar(".juego__marcador").textContent;
 
@@ -173,52 +172,50 @@ describe("crearPantallaJuego: reiniciar", () => {
     botonConTexto(elemento, "Reiniciar").click();
 
     expect(celdasPulsadas(elemento)).toEqual(celdasAlEmpezar);
-    expect(reproductor.cargar).toHaveBeenLastCalledWith(cuadriculaRota);
     expect(buscar(".juego__mensaje").textContent).toBe(
       "Cuadrícula reiniciada: está igual que al empezar la ronda.",
     );
     expect(buscar(".juego__marcador").textContent).toBe(marcadorAlEmpezar);
   });
 
-  it("no pierde la ayuda ya desbloqueada", () => {
+  it("no pierde las marcas ya desbloqueadas ni el resultado", () => {
     const { elemento, buscar } = montar();
     fallar(elemento, 3);
     botonConTexto(elemento, "Reiniciar").click();
-    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(false);
+    expect(elemento.querySelectorAll('.cuadricula__celda[aria-label$="equivocada"]')).toHaveLength(1);
+    expect(buscar(".juego__ayuda-pista").textContent).toBe(
+      "Las celdas equivocadas están marcadas en rojo.",
+    );
+    expect(buscar(".juego__resultado").hidden).toBe(false);
   });
 });
 
 describe("crearPantallaJuego: Escuchar el correcto", () => {
-  it("al montar está visible, deshabilitado y con la pista (0/3)", () => {
+  it("al montar está visible, habilitado y la pista cuenta (0/3)", () => {
     const { buscar } = montar();
     const ayuda = buscar<HTMLButtonElement>(".juego__ayuda");
-    const pista = buscar(".juego__ayuda-pista");
     expect(ayuda.hidden).toBe(false);
-    expect(ayuda.disabled).toBe(true);
-    expect(pista.textContent).toBe("Se desbloquea tras 3 intentos fallidos (0/3)");
-    expect(ayuda.getAttribute("aria-describedby")).toBe(pista.id);
+    expect(ayuda.disabled).toBe(false);
+    expect(buscar(".juego__ayuda-pista").textContent).toBe(
+      "Tras 3 intentos fallidos se marcan en rojo las celdas equivocadas (0/3)",
+    );
   });
 
-  it("cuenta los fallos y se habilita al tercero", () => {
+  it("la pista cuenta los fallos y al tercero avisa de las celdas marcadas", () => {
     const { elemento, buscar } = montar();
     fallar(elemento, 1);
-    expect(buscar(".juego__ayuda-pista").textContent).toBe(
-      "Se desbloquea tras 3 intentos fallidos (1/3)",
-    );
+    expect(buscar(".juego__ayuda-pista").textContent).toContain("(1/3)");
     fallar(elemento, 2);
-    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(false);
-    expect(buscar(".juego__ayuda-pista").textContent).toMatch(/^Disponible:/);
+    expect(buscar(".juego__ayuda-pista").textContent).toBe(
+      "Las celdas equivocadas están marcadas en rojo.",
+    );
   });
 
-  it("al pulsarla avisa cuántas celdas equivocadas quedaron marcadas", () => {
-    const { elemento, buscar } = montar();
-    fallar(elemento, 3);
+  it("al pulsarla suena el beat original y lo anuncia", () => {
+    const { reproductor, buscar } = montar();
     buscar(".juego__ayuda").click();
-    const marcadas = elemento.querySelectorAll(".cuadricula__celda--error").length;
-    expect(marcadas).toBeGreaterThan(0);
-    expect(buscar(".juego__mensaje").textContent).toBe(
-      `Suena el beat correcto. Las celdas equivocadas están marcadas: ${marcadas}.`,
-    );
+    expect(reproductor.cargar).toHaveBeenLastCalledWith(BEAT.cuadricula);
+    expect(buscar(".juego__escucha-estado").textContent).toContain("Suena el beat correcto");
   });
 });
 
@@ -232,12 +229,11 @@ describe("crearPantallaJuego: accesibilidad de los controles", () => {
     expect(slider.getAttribute("aria-valuetext")).toBe("140 bpm");
   });
 
-  it("Escuchar cambia texto y aria-label a Pausar", async () => {
+  it("Escuchar el beat roto cambia texto y aria-label a Pausar", () => {
     const { buscar } = montar();
     const play = buscar(".juego__play");
-    expect(play.getAttribute("aria-label")).toBe("Escuchar");
+    expect(play.getAttribute("aria-label")).toBe("Escuchar el beat roto");
     play.click();
-    await Promise.resolve();
     expect(play.textContent).toBe("Pausar");
     expect(play.getAttribute("aria-label")).toBe("Pausar");
   });

@@ -2,7 +2,6 @@ import { vi } from "vitest";
 import type { Cuadricula, Reproductor } from "../../../src/core/types";
 import { crearPantallaJuego } from "../../../src/games/arregla-el-beat/screen";
 import type { Beat } from "../../../src/games/arregla-el-beat/types";
-import { MENSAJE_FALLO } from "../../../src/games/arregla-el-beat/juego";
 
 // La pantalla importa el reproductor real; en jsdom no hay audio.
 vi.mock("tone", () => ({}));
@@ -83,44 +82,39 @@ describe("crearPantallaJuego", () => {
     expect(elemento.matches("section.juego")).toBe(true);
     expect(elemento.querySelectorAll(".cuadricula__fila")).toHaveLength(4);
     expect(elemento.querySelectorAll(".cuadricula__celda")).toHaveLength(64);
-    expect(buscar(".juego__play").textContent).toBe("Escuchar");
+    expect(buscar(".juego__play").textContent).toBe("Escuchar el beat roto");
     expect(buscar(".juego__comprobar").textContent).toBe("Comprobar");
-    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(true);
+    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(false);
     expect(buscar(".juego__marcador").textContent).toBe("Nivel 1 · Puntos 0 · Racha 0");
     expect(buscar(".juego__mensaje").getAttribute("aria-live")).toBe("polite");
     expect(buscar<HTMLAnchorElement>(".juego__volver").getAttribute("href")).toBe("#/");
   });
 
-  it("al montar carga el beat roto y toma su tempo, sin arrancar el audio", () => {
+  it("al montar toma el tempo del beat sin arrancar el audio", () => {
     const { reproductor, buscar } = montar();
     expect(reproductor.iniciar).not.toHaveBeenCalled();
     expect(reproductor.setTempo).toHaveBeenCalledWith(100);
     expect(buscar<HTMLInputElement>(".juego__tempo-slider").value).toBe("100");
     expect(buscar(".juego__tempo-valor").textContent).toBe("100 bpm");
-    const cargada = reproductor.cargar.mock.calls.at(-1)![0];
-    expect(cargada).not.toEqual(BEAT.cuadricula);
   });
 
-  it("clic en Escuchar llama iniciar y el texto pasa a Pausar; otro clic pausa", async () => {
+  it("clic en Escuchar el beat roto llama iniciar y el texto pasa a Pausar; otro clic pausa", () => {
     const { reproductor, buscar } = montar();
     const play = buscar(".juego__play");
     play.click();
-    await Promise.resolve();
     expect(reproductor.iniciar).toHaveBeenCalledTimes(1);
     expect(play.textContent).toBe("Pausar");
     play.click();
     expect(reproductor.pausar).toHaveBeenCalledTimes(1);
-    expect(play.textContent).toBe("Escuchar");
+    expect(play.textContent).toBe("Escuchar el beat roto");
   });
 
-  it("alPaso resalta la columna y al pausar se quita el resaltado", async () => {
+  it("alPaso nunca resalta una columna de la cuadrícula", () => {
     const { reproductor, elemento, buscar } = montar();
     buscar(".juego__play").click();
-    await Promise.resolve();
     reproductor.emitirPaso(4);
-    expect(elemento.querySelectorAll(".cuadricula__celda--actual")).toHaveLength(4);
-    buscar(".juego__play").click();
     expect(elemento.querySelectorAll(".cuadricula__celda--actual")).toHaveLength(0);
+    expect(elemento.querySelectorAll('.pasos__paso[aria-current="step"]')).toHaveLength(1);
   });
 
   it("el slider de tempo llama setTempo y actualiza el output", () => {
@@ -132,60 +126,55 @@ describe("crearPantallaJuego", () => {
     expect(buscar(".juego__tempo-valor").textContent).toBe("140 bpm");
   });
 
-  it("editar la cuadrícula recarga el reproductor", () => {
-    const { reproductor, elemento } = montar();
-    const cargasAntes = reproductor.cargar.mock.calls.length;
+  it("la cuadrícula editada llega al reproductor en la siguiente escucha", () => {
+    const { reproductor, elemento, buscar } = montar();
     celda(elemento, "kick", 3).click();
-    expect(reproductor.cargar).toHaveBeenCalledTimes(cargasAntes + 1);
+    expect(reproductor.cargar).not.toHaveBeenCalled();
+    buscar(".juego__play").click();
+    expect(reproductor.cargar.mock.calls.at(-1)![0].kick[3]).toBe(true);
   });
 
   it("corregir y comprobar muestra el acierto, suma puntos y arranca otra ronda", () => {
-    const { reproductor, elemento, buscar } = montar();
+    const { elemento, buscar } = montar();
     corregirCuadricula(elemento);
-    const cargasAntes = reproductor.cargar.mock.calls.length;
     buscar(".juego__comprobar").click();
-    const mensaje = buscar(".juego__mensaje").textContent!;
-    expect(mensaje).not.toBe("");
-    expect(mensaje).not.toBe(MENSAJE_FALLO);
-    expect(mensaje).toMatch(/^El /);
+    expect(buscar(".juego__resultado-titulo").textContent).toBe("¡Correcto!");
+    expect(buscar(".juego__resultado-resumen").textContent).toMatch(/^El /);
     expect(buscar(".juego__marcador").textContent).toBe("Nivel 1 · Puntos 100 · Racha 1");
-    expect(reproductor.cargar).toHaveBeenCalledTimes(cargasAntes + 1);
-    expect(reproductor.cargar.mock.calls.at(-1)![0]).not.toEqual(BEAT.cuadricula);
     buscar(".juego__comprobar").click();
-    expect(buscar(".juego__mensaje").textContent).toBe(MENSAJE_FALLO);
+    expect(buscar(".juego__resultado-titulo").textContent).toBe("Todavía no suena igual");
   });
 
-  it("un fallo muestra el mensaje de fallo y la ayuda sigue deshabilitada", () => {
+  it("un fallo muestra el resultado y deja vacío el mensaje", () => {
     const { buscar } = montar();
     fallar(buscar, 1);
-    expect(buscar(".juego__mensaje").textContent).toBe(MENSAJE_FALLO);
-    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(true);
+    expect(buscar(".juego__resultado").hidden).toBe(false);
+    expect(buscar(".juego__resultado-titulo").textContent).toBe("Todavía no suena igual");
+    expect(buscar(".juego__mensaje").textContent).toBe("");
   });
 
-  it("3 fallos seguidos habilitan el botón Escuchar el correcto", () => {
+  it("Escuchar el correcto está habilitado con o sin fallos", () => {
     const { buscar } = montar();
-    fallar(buscar, 2);
-    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(true);
-    fallar(buscar, 1);
+    expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(false);
+    fallar(buscar, 3);
     expect(buscar<HTMLButtonElement>(".juego__ayuda").disabled).toBe(false);
     expect(buscar(".juego__ayuda").textContent).toBe("Escuchar el correcto");
   });
 
-  it("la ayuda carga la cuadrícula original y marca las celdas con error", () => {
+  it("tras 3 fallos marca las celdas con error y la ayuda carga la cuadrícula original", () => {
     const { reproductor, elemento, buscar } = montar();
     fallar(buscar, 3);
+    expect(elemento.querySelectorAll('.cuadricula__celda[aria-label$="equivocada"]')).toHaveLength(1);
     buscar(".juego__ayuda").click();
     expect(reproductor.cargar).toHaveBeenLastCalledWith(BEAT.cuadricula);
-    expect(elemento.querySelectorAll(".cuadricula__celda--error")).toHaveLength(1);
   });
 
-  it("destruir pausa y desuscribe alPaso", async () => {
+  it("destruir pausa y desuscribe alPaso", () => {
     const { reproductor, pantalla, elemento, buscar } = montar();
     buscar(".juego__play").click();
-    await Promise.resolve();
     pantalla.destruir();
     expect(reproductor.pausar).toHaveBeenCalled();
     reproductor.emitirPaso(2);
-    expect(elemento.querySelectorAll(".cuadricula__celda--actual")).toHaveLength(0);
+    expect(elemento.querySelectorAll('.pasos__paso[aria-current="step"]')).toHaveLength(0);
   });
 });

@@ -127,6 +127,16 @@ button:disabled {
   color: var(--color-texto-suave);
 }
 
+.menu__teoria {
+  margin: var(--espacio) 0;
+  color: var(--color-texto-suave);
+}
+
+.menu__teoria a {
+  color: var(--color-activa);
+  text-decoration: underline;
+}
+
 .menu__acciones {
   display: flex;
   gap: 12px;
@@ -195,11 +205,16 @@ a.tarjeta:hover {
   padding: var(--espacio);
 }
 
+/* Gana a cualquier display de la pantalla: la cuadrícula oculta no se ve mientras suena. */
+.juego [hidden] {
+  display: none !important;
+}
+
 .juego__superior {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
 }
 
 .juego__marcador {
@@ -213,57 +228,75 @@ a.tarjeta:hover {
   white-space: nowrap;
 }
 
-.juego__objetivo {
+.juego__objetivo,
+.juego__aprendes,
+.juego__ayudas {
   grid-column: 1 / -1;
+}
+
+.juego__objetivo,
+.juego__aprendes {
   margin: 0;
   color: var(--color-texto-suave);
 }
 
-.juego__como {
-  grid-column: 1 / -1;
-  justify-self: start;
+.juego__aprendes strong {
+  color: var(--color-activa);
 }
 
-.juego__controles {
+.juego__ayudas {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.juego__ayudas button {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+/* Escucha: en celular una columna (botones apilados a todo el ancho). */
+.juego__escucha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  padding: 12px;
+  padding: var(--espacio);
   border-radius: var(--radio);
   background: var(--color-superficie);
 }
 
-/* El fondo de la barra ya es de superficie: los botones secundarios se separan con el fondo. */
+/* La tarjeta ya es de superficie: los botones en reposo se separan con el fondo. */
+/* Sin transición: el fondo y el texto cambian a la vez, nunca texto claro sobre amarillo. */
 .juego__play,
-.juego__reiniciar,
 .juego__ayuda {
   background: var(--color-fondo);
+  color: var(--color-texto);
+  font-weight: 400;
+  transition: none;
 }
 
-/* En celular los botones van por pares y el tempo ocupa su propia fila. */
-.juego__controles button {
-  flex: 1 1 calc(50% - 6px);
+.juego__play[aria-pressed="true"],
+.juego__ayuda[aria-pressed="true"] {
+  border-color: var(--color-activa);
+  background: var(--color-activa);
+  color: var(--color-fondo);
+  font-weight: 700;
 }
 
-.juego__play,
-.juego__comprobar {
-  order: 1;
+/* El anillo amarillo no se distingue sobre un botón amarillo. */
+.juego__play[aria-pressed="true"]:focus-visible,
+.juego__ayuda[aria-pressed="true"]:focus-visible,
+.juego__comprobar:focus-visible {
+  outline-color: var(--color-foco-contraste);
 }
 
 .juego__tempo {
-  order: 2;
   display: flex;
-  flex: 1 1 100%;
   align-items: center;
   gap: 8px;
   min-height: var(--tactil-min);
   color: var(--color-texto-suave);
-}
-
-.juego__reiniciar,
-.juego__ayuda {
-  order: 3;
 }
 
 .juego__tempo-slider {
@@ -281,16 +314,64 @@ a.tarjeta:hover {
   white-space: nowrap;
 }
 
+.juego__escucha-estado {
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+}
+
+/* Indicador de pasos: en celular dos filas de 8 (pasos 1-8 y 9-16) a todo el ancho. */
+.pasos {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.pasos__paso {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--color-celda);
+  color: var(--color-texto-suave);
+  font-size: 0.8rem;
+}
+
+.pasos__paso--tiempo {
+  color: var(--color-texto);
+  font-weight: 700;
+}
+
+.pasos__paso--actual {
+  background: var(--color-activa);
+  color: var(--color-fondo);
+  font-weight: 700;
+}
+
+.juego__controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.juego__controles button {
+  flex: 1 1 calc(50% - 6px);
+}
+
 .juego__ayuda-pista {
-  order: 4;
   flex: 1 1 100%;
   color: var(--color-texto-suave);
   font-size: 0.85rem;
 }
 
 .juego__mensaje {
-  min-height: 1.5em;
   margin: 0;
+}
+
+.juego__mensaje:empty {
+  display: none;
 }
 
 .juego__mensaje:not(:empty) {
@@ -298,6 +379,66 @@ a.tarjeta:hover {
   border-left: 4px solid var(--color-activa);
   border-radius: var(--radio);
   background: var(--color-superficie);
+}
+
+.juego__resultado {
+  display: grid;
+  gap: 12px;
+  padding: var(--espacio);
+  border-left: 4px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+
+.juego__resultado > * {
+  margin: 0;
+}
+
+.juego__resultado[data-estado="acierto"] {
+  border-left-color: var(--color-acierto);
+}
+
+.juego__resultado[data-estado="fallo"] {
+  border-left-color: var(--color-error);
+}
+
+.juego__resultado[data-estado="acierto"] .juego__resultado-titulo {
+  color: var(--color-acierto);
+}
+
+.juego__resultado[data-estado="fallo"] .juego__resultado-titulo {
+  color: var(--color-error);
+}
+
+.juego__resultado-resumen {
+  color: var(--color-texto);
+}
+
+.juego__resultado-motivos {
+  display: grid;
+  gap: 8px;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+
+.juego__resultado-puntaje {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-borde);
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+}
+
+.juego__oculta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  margin: 0;
+  padding: var(--espacio);
+  border: 2px dashed var(--color-borde);
+  border-radius: var(--radio);
+  color: var(--color-texto-suave);
+  text-align: center;
 }
 
 .juego__volver {
@@ -485,6 +626,18 @@ a.tarjeta:hover {
   background: var(--color-superficie);
 }
 
+.tutoriales__tipo {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--color-activa);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .tutoriales__objetivo,
 .tutoriales__aprendes {
   margin: 8px 0 0;
@@ -535,23 +688,36 @@ a.tarjeta:hover {
     font-size: 1rem;
   }
 
-  .juego__objetivo {
-    grid-column: 1;
+  .juego__escucha {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .juego__como {
-    grid-column: 2;
-    justify-self: end;
+  .juego__tempo,
+  .pasos,
+  .juego__escucha-estado {
+    grid-column: 1 / -1;
   }
 
-  .juego__controles button,
-  .juego__tempo {
+  /* Igual que la cuadrícula: la columna de 4px entre los pasos 8 y 9 abre el hueco de 12px. */
+  .pasos {
+    grid-template-columns: repeat(8, minmax(0, 40px)) 4px repeat(8, minmax(0, 40px));
+  }
+
+  .pasos__paso[data-paso="8"] {
+    grid-column: 10;
+  }
+
+  .juego__controles button {
     flex: 0 1 auto;
-    order: 0;
   }
 
-  .juego__tempo-slider {
-    flex: 0 1 180px;
+  .juego__ayuda-pista {
+    flex: 1 1 0;
+    text-align: right;
+  }
+
+  .juego__oculta {
+    min-height: 220px;
   }
 
   .cuadricula {
