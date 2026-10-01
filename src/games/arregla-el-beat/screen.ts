@@ -39,10 +39,20 @@ import { alternarPaso } from "../../core/sequencer";
 import type { Cuadricula, Puntaje, Reproductor } from "../../core/types";
 import { PISTAS_BATERIA, TEMPO_MAX, TEMPO_MIN } from "../../core/types";
 import { crearCuadriculaUI } from "../../ui/grid";
+import { crearRegistroTutoriales } from "../../ui/registroTutoriales";
+import { crearTutorialUI } from "../../ui/tutorial";
+import type { TutorialUI } from "../../ui/tutorial";
 import type { RegistroTutoriales, Tutorial } from "../../ui/types";
 import { obtenerBanco } from "./bank";
 import { ayudaDisponible, celdasErroneas, comprobar, crearJuego, iniciarRonda } from "./juego";
+import { obtenerTutorial } from "./tutorial";
 import type { Beat, EstadoJuego } from "./types";
+
+/** Tope del contador que muestra la pista de la ayuda (la regla vive en ayudaDisponible). */
+const FALLOS_EN_PISTA = 3;
+const PISTA_AYUDA_DISPONIBLE =
+  "Disponible: suena el beat original y las celdas equivocadas se marcan en rojo.";
+const MENSAJE_REINICIO = "Cuadrícula reiniciada: está igual que al empezar la ronda.";
 
 /** Dependencias opcionales para pruebas: en producción se usan las reales. */
 export interface OpcionesPantallaJuego {
@@ -130,25 +140,63 @@ export function crearPantallaJuego(opciones: OpcionesPantallaJuego = {}): Pantal
   const reproductor = opciones.reproductor ?? crearReproductor(crearBateria());
   const beats = opciones.beats ?? obtenerBanco();
   const semillaInicial = opciones.semillaInicial ?? 1;
+  const tutorial = opciones.tutorial ?? obtenerTutorial();
+  const registroTutoriales = opciones.registroTutoriales ?? crearRegistroTutoriales();
 
-  const dom = crearDom();
+  const dom = crearDom(tutorial.objetivo);
   const cuadriculaUI = crearCuadriculaUI(PISTAS_BATERIA, alternarCelda);
   dom.seccion.insertBefore(cuadriculaUI.elemento, dom.volver);
 
   let estado: EstadoJuego = crearJuego();
   let cuadriculaActual: Cuadricula = {};
   let ronda = 0;
+  let tutorialAbierto: TutorialUI | null = null;
 
   function empezarRonda(): void {
     const beat = beats[ronda % beats.length];
     estado = iniciarRonda(estado, beat, semillaInicial + ronda);
     const beatRoto = estado.beatRoto!;
-    cuadriculaActual = beatRoto.cuadricula;
+    mostrarCuadricula(beatRoto.cuadricula);
+    actualizarAyuda();
+    ponerTempo(beatRoto.tempo);
+  }
+
+  function mostrarCuadricula(cuadricula: Cuadricula): void {
+    cuadriculaActual = cuadricula;
     cuadriculaUI.limpiarErrores();
     cuadriculaUI.ponerCuadricula(cuadriculaActual);
-    dom.ayuda.hidden = true;
-    ponerTempo(beatRoto.tempo);
     reproductor.cargar(cuadriculaActual);
+  }
+
+  function reiniciarCuadricula(): void {
+    mostrarCuadricula(estado.beatRoto!.cuadricula);
+    dom.mensaje.textContent = MENSAJE_REINICIO;
+  }
+
+  function actualizarAyuda(): void {
+    const disponible = ayudaDisponible(estado);
+    dom.ayuda.disabled = !disponible;
+    dom.ayudaPista.textContent = disponible
+      ? PISTA_AYUDA_DISPONIBLE
+      : textoPistaBloqueada(estado.intentosFallidos);
+  }
+
+  function ponerEtiquetaPlay(texto: string): void {
+    dom.play.textContent = texto;
+    dom.play.setAttribute("aria-label", texto);
+  }
+
+  function abrirTutorial(): void {
+    if (tutorialAbierto !== null) return;
+    tutorialAbierto = crearTutorialUI(tutorial, { alCerrar: alCerrarTutorial });
+    dom.seccion.append(tutorialAbierto.elemento);
+    tutorialAbierto.abrir();
+  }
+
+  function alCerrarTutorial(): void {
+    tutorialAbierto = null;
+    registroTutoriales.marcarVisto(tutorial.id);
+    dom.play.focus();
   }
 
   function alternarCelda(pistaId: string, paso: number): void {
@@ -159,6 +207,7 @@ export function crearPantallaJuego(opciones: OpcionesPantallaJuego = {}): Pantal
   function ponerTempo(bpm: number): void {
     reproductor.setTempo(bpm);
     dom.tempoSlider.value = String(bpm);
+    dom.tempoSlider.setAttribute("aria-valuetext", `${bpm} bpm`);
     dom.tempoValor.textContent = `${bpm} bpm`;
   }
 
@@ -166,11 +215,11 @@ export function crearPantallaJuego(opciones: OpcionesPantallaJuego = {}): Pantal
     if (reproductor.sonando) {
       reproductor.pausar();
       cuadriculaUI.ponerPasoActual(null);
-      dom.play.textContent = "Escuchar";
+      ponerEtiquetaPlay("Escuchar");
       return;
     }
     await reproductor.iniciar();
-    dom.play.textContent = "Pausar";
+    ponerEtiquetaPlay("Pausar");
   }
 
   function comprobarCuadricula(): void {
@@ -182,23 +231,30 @@ export function crearPantallaJuego(opciones: OpcionesPantallaJuego = {}): Pantal
       empezarRonda();
       return;
     }
-    dom.ayuda.hidden = !ayudaDisponible(estado);
+    actualizarAyuda();
   }
 
   function escucharCorrecto(): void {
     reproductor.cargar(estado.beatOriginal!.cuadricula);
-    cuadriculaUI.marcarErrores(celdasErroneas(estado, cuadriculaActual));
+    const erroneas = celdasErroneas(estado, cuadriculaActual);
+    cuadriculaUI.marcarErrores(erroneas);
+    dom.mensaje.textContent = `Suena el beat correcto. Las celdas equivocadas están marcadas: ${erroneas.length}.`;
   }
 
   dom.play.addEventListener("click", () => void alternarReproduccion());
   dom.tempoSlider.addEventListener("input", () => ponerTempo(Number(dom.tempoSlider.value)));
   dom.comprobar.addEventListener("click", comprobarCuadricula);
+  dom.reiniciar.addEventListener("click", reiniciarCuadricula);
   dom.ayuda.addEventListener("click", escucharCorrecto);
+  dom.como.addEventListener("click", abrirTutorial);
   const desuscribirPaso = reproductor.alPaso((paso) => cuadriculaUI.ponerPasoActual(paso));
 
   empezarRonda();
+  if (!registroTutoriales.visto(tutorial.id)) abrirTutorial();
 
   function destruir(): void {
+    tutorialAbierto?.destruir();
+    tutorialAbierto = null;
     reproductor.pausar();
     desuscribirPaso();
     cuadriculaUI.ponerPasoActual(null);
@@ -211,6 +267,11 @@ export function crearPantallaJuego(opciones: OpcionesPantallaJuego = {}): Pantal
 
 function textoMarcador({ nivel, puntos, racha }: Puntaje): string {
   return `Nivel ${nivel} · Puntos ${puntos} · Racha ${racha}`;
+}
+
+function textoPistaBloqueada(intentosFallidos: number): string {
+  const fallos = Math.min(intentosFallidos, FALLOS_EN_PISTA);
+  return `Se desbloquea tras ${FALLOS_EN_PISTA} intentos fallidos (${fallos}/${FALLOS_EN_PISTA})`;
 }
 
 function crearElemento<K extends keyof HTMLElementTagNameMap>(
@@ -230,27 +291,62 @@ function crearBoton(clase: string, texto: string): HTMLButtonElement {
   return boton;
 }
 
-function crearDom() {
-  const seccion = crearElemento("section", "juego");
+function crearSuperior(objetivoTutorial: string) {
   const superior = crearElemento("header", "juego__superior");
-  const controles = crearElemento("div", "juego__controles");
+  const titulo = crearElemento("h1", "juego__titulo", "Arregla el beat");
+  titulo.id = "juego-titulo";
 
-  const play = crearBoton("juego__play", "Escuchar");
+  const marcador = crearElemento("div", "juego__marcador", textoMarcador(crearJuego().puntaje));
+  marcador.setAttribute("aria-live", "polite");
+
+  const objetivo = crearElemento("p", "juego__objetivo");
+  const etiquetaObjetivo = document.createElement("strong");
+  etiquetaObjetivo.textContent = "Objetivo:";
+  objetivo.append(etiquetaObjetivo, ` ${objetivoTutorial}`);
+
+  const como = crearBoton("juego__como", "¿Cómo se juega?");
+  superior.append(titulo, marcador, objetivo, como);
+  return { superior, marcador, como };
+}
+
+function crearTempo() {
   const tempo = crearElemento("label", "juego__tempo", "Tempo");
   const tempoSlider = crearElemento("input", "juego__tempo-slider");
   tempoSlider.type = "range";
   tempoSlider.min = String(TEMPO_MIN);
   tempoSlider.max = String(TEMPO_MAX);
+  tempoSlider.setAttribute("aria-valuetext", "120 bpm");
   const tempoValor = crearElemento("output", "juego__tempo-valor", "120 bpm");
   tempo.append(tempoSlider, tempoValor);
+  return { tempo, tempoSlider, tempoValor };
+}
 
+function crearControles() {
+  const controles = crearElemento("div", "juego__controles");
+  controles.setAttribute("role", "group");
+  controles.setAttribute("aria-label", "Controles");
+
+  const play = crearBoton("juego__play", "Escuchar");
+  play.setAttribute("aria-label", "Escuchar");
+  const { tempo, tempoSlider, tempoValor } = crearTempo();
   const comprobar = crearBoton("juego__comprobar", "Comprobar");
-  const ayuda = crearBoton("juego__ayuda", "Escuchar el correcto");
-  ayuda.hidden = true;
-  controles.append(play, tempo, comprobar, ayuda);
+  const reiniciar = crearBoton("juego__reiniciar", "Reiniciar");
 
-  const marcador = crearElemento("div", "juego__marcador", textoMarcador(crearJuego().puntaje));
-  superior.append(controles, marcador);
+  const ayudaPista = crearElemento("span", "juego__ayuda-pista", textoPistaBloqueada(0));
+  ayudaPista.id = "juego-ayuda-pista";
+  const ayuda = crearBoton("juego__ayuda", "Escuchar el correcto");
+  ayuda.disabled = true;
+  ayuda.setAttribute("aria-describedby", ayudaPista.id);
+
+  controles.append(play, tempo, comprobar, reiniciar, ayuda, ayudaPista);
+  return { controles, play, tempoSlider, tempoValor, comprobar, reiniciar, ayuda, ayudaPista };
+}
+
+function crearDom(objetivoTutorial: string) {
+  const seccion = crearElemento("section", "juego");
+  seccion.setAttribute("aria-labelledby", "juego-titulo");
+  const { superior, ...encabezado } = crearSuperior(objetivoTutorial);
+  const { controles, ...botones } = crearControles();
 
   const mensaje = crearElemento("p", "juego__mensaje");
   mensaje.setAttribute("aria-live", "polite");
@@ -258,6 +354,6 @@ function crearDom() {
   const volver = crearElemento("a", "juego__volver", "← Volver al menú");
   volver.href = "#/";
 
-  seccion.append(superior, mensaje, volver);
-  return { seccion, play, tempoSlider, tempoValor, comprobar, ayuda, marcador, mensaje, volver };
+  seccion.append(superior, controles, mensaje, volver);
+  return { seccion, mensaje, volver, ...encabezado, ...botones };
 }
