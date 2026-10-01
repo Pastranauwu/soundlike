@@ -32,6 +32,46 @@
  * </section>
  * Nota: "Escuchar el correcto" SIEMPRE está visible (ya no usa hidden); queda
  * disabled hasta que ayudaDisponible(estado) es true (tras 3 intentos fallidos).
+ *
+ * ===== CAMBIO PENDIENTE (escucha a ciegas + resultado + teoría) =====
+ * Este contrato REEMPLAZA al de arriba cuando se implemente (ver ARCHITECTURE.md,
+ * "Flujo del caso principal"). Al implementarlo, borra el contrato viejo.
+ * <section class="juego" aria-labelledby="juego-titulo">
+ *   <header class="juego__superior">
+ *     <h1 class="juego__titulo" id="juego-titulo">Arregla el beat</h1>
+ *     <div class="juego__marcador" aria-live="polite">Nivel 1 · Puntos 0 · Racha 0</div>
+ *     <p class="juego__objetivo"><strong>Objetivo:</strong> {tutorial.objetivo}</p>
+ *     <p class="juego__aprendes"><strong>Aprendes:</strong> {tutorialTeoria.aprendes}</p>
+ *     <div class="juego__ayudas">
+ *       <button type="button" class="juego__como">¿Cómo se juega?</button>
+ *       <button type="button" class="juego__teoria">Teoría del beat</button>
+ *     </div>
+ *   </header>
+ *   <div class="juego__escucha" role="group" aria-label="Escucha">
+ *     <button type="button" class="juego__play" aria-pressed="false">Escuchar el beat roto</button>
+ *     <button type="button" class="juego__ayuda" aria-pressed="false">Escuchar el correcto</button>
+ *     <label class="juego__tempo">Tempo <input class="juego__tempo-slider" ...>
+ *       <output class="juego__tempo-valor">120 bpm</output></label>
+ *     <!-- indicador de src/ui/indicadorPasos.ts (.pasos, 16 casillas) -->
+ *     <p class="juego__escucha-estado" aria-live="polite">{vistaEscucha(fuente).estado}</p>
+ *   </div>
+ *   <div class="juego__controles" role="group" aria-label="Controles">
+ *     <button type="button" class="juego__comprobar">Comprobar</button>
+ *     <button type="button" class="juego__reiniciar">Reiniciar</button>
+ *     <span class="juego__ayuda-pista">Tras 3 intentos fallidos se marcan en rojo las celdas equivocadas (0/3)</span>
+ *   </div>
+ *   <p class="juego__mensaje" aria-live="polite"></p>
+ *   <section class="juego__resultado" aria-live="polite" hidden>
+ *     <h2 class="juego__resultado-titulo">{resultado.titulo}</h2>
+ *     <p class="juego__resultado-resumen">{resultado.resumen}</p>
+ *     <ul class="juego__resultado-motivos"><li>{motivo}</li>...</ul>   (sin <ul> si no hay motivos)
+ *     <p class="juego__resultado-puntaje">Nivel N · Puntos P · Racha R · Intentos fallidos F</p>
+ *   </section>
+ *   <p class="juego__oculta" hidden>La cuadrícula está oculta mientras escuchas. Pulsa Pausar para editarla.</p>
+ *   <!-- cuadrícula de src/ui/grid.ts; lleva hidden mientras suena algo -->
+ *   <a class="juego__volver" href="#/">← Volver al menú</a>
+ * </section>
+ * .juego__resultado lleva además data-estado="acierto" | "fallo".
  */
 import { crearBateria } from "../../core/drums";
 import { crearReproductor } from "../../core/player";
@@ -66,6 +106,11 @@ export interface OpcionesPantallaJuego {
   tutorial?: Tutorial;
   /** Registro de tutoriales vistos. Por defecto crearRegistroTutoriales() (localStorage). */
   registroTutoriales?: RegistroTutoriales;
+  /**
+   * Tutorial didáctico (teoría) del juego. Por defecto obtenerTutorialTeoriaBeat()
+   * de ./tutorialTeoria. PENDIENTE: todavía no se usa (ver CAMBIO PENDIENTE arriba).
+   */
+  tutorialTeoria?: Tutorial;
 }
 
 /** Manejador de la pantalla montada. */

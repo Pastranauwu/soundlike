@@ -3,8 +3,10 @@
  * Uso: BASE_URL=http://localhost:5173 CAPTURAS=capturas node scripts/capturas.mjs
  * Requiere una sola vez: npx playwright install chromium
  * Cubre lo que no tiene ruta propia: tutorial al entrar (2 pantallas y saltar),
- * Escuchar (gesto que arranca el audio), editar celdas con mouse y teclado,
- * foco visible, Reiniciar, Comprobar, la ayuda "Escuchar el correcto", y las
+ * escucha a ciegas (beat roto y correcto: cuadrícula oculta, paso iluminado),
+ * editar celdas con mouse y teclado, foco visible, Comprobar con el resultado
+ * de la jugada (3 fallos: cada vez más detalle y celdas marcadas), Reiniciar,
+ * los tutoriales didácticos (teoría del beat, escalas y acordes), y las
  * pantallas Tutoriales y Acerca de, en escritorio y en celular.
  *
  * Tolerante a la app incompleta: si un elemento todavía no existe (stubs),
@@ -102,12 +104,20 @@ await png(desktop, "08-juego-tutorial-pantalla-2");
 await intenta("tutorial: ¡A jugar!", () => click(desktop, ".tutorial__siguiente"));
 await png(desktop, "09-juego-escritorio");
 
-// Primer clic: arranca el audio (regla de autoplay)
-await intenta("botón Escuchar (arranca el audio)", async () => {
+// Primer clic: arranca el audio (regla de autoplay). Mientras suena, la
+// cuadrícula se oculta y solo se ve el indicador del paso actual.
+await intenta("Escuchar el beat roto (cuadrícula oculta, paso iluminado)", async () => {
   await click(desktop, ".juego__play");
   await desktop.waitForTimeout(1800);
 });
-await png(desktop, "10-juego-sonando");
+await png(desktop, "10-juego-escuchando-roto");
+await intenta("Escuchar el correcto (cambio directo)", async () => {
+  await click(desktop, ".juego__ayuda");
+  await desktop.waitForTimeout(1500);
+});
+await png(desktop, "11-juego-escuchando-correcto");
+await intenta("Pausar: vuelve la cuadrícula", () => click(desktop, ".juego__ayuda"));
+await png(desktop, "12-juego-en-pausa");
 
 // Editar con mouse y con teclado; mover el tempo
 await intenta("editar celda clap paso 5", () =>
@@ -119,49 +129,65 @@ await intenta("teclado: flecha derecha y Espacio en la cuadrícula", async () =>
 });
 await intenta("mover slider de tempo a 140", () =>
   desktop.locator(".juego__tempo-slider").fill("140", { timeout: TIMEOUT }));
-await png(desktop, "11-juego-editado-foco-teclado");
+await png(desktop, "13-juego-editado-foco-teclado");
+
+// Comprobar: resultado de la jugada y por qué falló (más detalle en cada intento)
+await intenta("botón Comprobar", () => click(desktop, ".juego__comprobar"));
+await png(desktop, "14-juego-resultado-fallo-1");
+await intenta("segundo fallo", () => click(desktop, ".juego__comprobar"));
+await png(desktop, "15-juego-resultado-fallo-2");
+await intenta("tercer fallo", () => click(desktop, ".juego__comprobar"));
+await png(desktop, "16-juego-resultado-fallo-3-celdas-marcadas");
 
 await intenta("botón Reiniciar", () => click(desktop, ".juego__reiniciar"));
-await png(desktop, "12-juego-reiniciado");
-
-// Comprobar (lo más probable: fallo) y ver el mensaje
-await intenta("botón Comprobar", () => click(desktop, ".juego__comprobar"));
-await png(desktop, "13-juego-feedback");
-await intenta("segundo fallo", () => click(desktop, ".juego__comprobar"));
-await intenta("tercer fallo", () => click(desktop, ".juego__comprobar"));
-await png(desktop, "14-juego-ayuda-disponible");
-await intenta("botón Escuchar el correcto", async () => {
-  await click(desktop, ".juego__ayuda");
-  await desktop.waitForTimeout(1500);
-});
-await png(desktop, "15-juego-escuchar-correcto");
+await png(desktop, "17-juego-reiniciado");
+await intenta("Teoría del beat abre el tutorial didáctico", () => click(desktop, ".juego__teoria"));
+await png(desktop, "18-juego-teoria-pantalla-1");
+await intenta("teoría: Siguiente", () => click(desktop, ".tutorial__siguiente"));
+await png(desktop, "19-juego-teoria-pantalla-2");
+await intenta("teoría: cerrar", () => click(desktop, ".tutorial__siguiente"));
 await intenta("¿Cómo se juega? reabre el tutorial", () => click(desktop, ".juego__como"));
-await png(desktop, "16-juego-como-se-juega");
+await png(desktop, "20-juego-como-se-juega");
+await intenta("cerrar ¿Cómo se juega?", () => click(desktop, ".tutorial__saltar"));
+
+// Tutoriales: los didácticos (teoría del beat, escalas y acordes)
+await ir(desktop, "#/tutoriales", ".tutoriales");
+await png(desktop, "21-tutoriales-con-teoria");
+await intenta("Ver tutorial de Escalas y acordes", async () => {
+  await desktop.locator(".tutoriales__ver").last().click({ timeout: TIMEOUT });
+  await desktop.locator('[role="dialog"]').waitFor({ timeout: TIMEOUT });
+});
+await png(desktop, "22-tutorial-escalas");
+await intenta("escalas: Siguiente", () => click(desktop, ".tutorial__siguiente"));
+await png(desktop, "23-tutorial-acordes");
 await desktop.context().close();
 
 // ---------- Celular (390x844) ----------
 const movil = await paginaNueva({ width: 390, height: 844 });
 await ir(movil, "#/", ".menu");
-await png(movil, "17-menu-celular");
+await png(movil, "24-menu-celular");
 await intenta("clic en la tarjeta del juego (celular)", async () => {
   await click(movil, 'a.tarjeta[href="#/arregla-el-beat"]');
   await movil.locator(".juego").waitFor({ timeout: TIMEOUT });
 });
 if (!movil.url().includes("#/arregla-el-beat")) await ir(movil, "#/arregla-el-beat", ".juego");
-await png(movil, "18-juego-celular-tutorial");
+await png(movil, "25-juego-celular-tutorial");
 await intenta("Saltar tutorial (celular)", () => click(movil, ".tutorial__saltar"));
-await png(movil, "19-juego-celular");
-await intenta("Escuchar en celular", async () => {
+await png(movil, "26-juego-celular");
+await intenta("Escuchar el beat roto en celular", async () => {
   await click(movil, ".juego__play");
   await movil.waitForTimeout(1200);
 });
+await png(movil, "27-juego-celular-escuchando");
+await intenta("Pausar en celular", () => click(movil, ".juego__play"));
 await intenta("tocar celda en celular", () =>
   click(movil, '.cuadricula__fila[data-pista="kick"] .cuadricula__celda[data-paso="12"]'));
-await png(movil, "20-juego-celular-sonando");
+await intenta("Comprobar en celular", () => click(movil, ".juego__comprobar"));
+await png(movil, "28-juego-celular-resultado");
 await ir(movil, "#/tutoriales", ".tutoriales");
-await png(movil, "21-tutoriales-celular");
+await png(movil, "29-tutoriales-celular");
 await ir(movil, "#/acerca-de", ".acerca");
-await png(movil, "22-acerca-de-celular");
+await png(movil, "30-acerca-de-celular");
 await movil.context().close();
 
 await browser.close();

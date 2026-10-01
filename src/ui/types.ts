@@ -15,13 +15,19 @@ export interface PasoTutorial {
   puntos: string[];
 }
 
-/** Tutorial de un juego: 1 o 2 pantallas, más lo que se gana y lo que se aprende. */
+/**
+ * Tutorial de un juego o de teoría (didáctico): 1 o 2 pantallas, más lo que se
+ * gana y lo que se aprende.
+ */
 export interface Tutorial {
   /** Id del juego; es también la clave en RegistroTutoriales. P. ej. "arregla-el-beat". */
   id: string;
   /** Nombre visible del juego, p. ej. "Arregla el beat". */
   juego: string;
-  /** Hash de la ruta del juego, p. ej. "#/arregla-el-beat". */
+  /**
+   * Hash de la ruta del juego, p. ej. "#/arregla-el-beat". "" = tutorial de
+   * teoría sin juego propio: la pantalla Tutoriales no muestra el enlace "Jugar".
+   */
   ruta: string;
   /** Cómo se gana, una frase. Se ve en el tutorial, en la pantalla de juego y en Tutoriales. */
   objetivo: string;
