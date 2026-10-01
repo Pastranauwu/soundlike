@@ -47,7 +47,7 @@
 export function crearMenu(): HTMLElement {
   const menu = document.createElement("main");
   menu.className = "menu";
-  menu.append(crearTitulo(), crearSubtitulo(), crearTarjetas());
+  menu.append(crearTitulo(), crearSubtitulo(), crearAcciones(), crearTarjetas());
   return menu;
 }
 
@@ -66,6 +66,30 @@ function crearSubtitulo(): HTMLElement {
   return subtitulo;
 }
 
+function crearAcciones(): HTMLElement {
+  const acciones = document.createElement("div");
+  acciones.className = "menu__acciones";
+
+  const btnTutoriales = document.createElement("button");
+  btnTutoriales.type = "button";
+  btnTutoriales.className = "menu__tutoriales";
+  btnTutoriales.textContent = "Tutoriales";
+  btnTutoriales.addEventListener("click", () => {
+    location.hash = "#/tutoriales";
+  });
+
+  const btnAcerca = document.createElement("button");
+  btnAcerca.type = "button";
+  btnAcerca.className = "menu__acerca";
+  btnAcerca.textContent = "Acerca de";
+  btnAcerca.addEventListener("click", () => {
+    location.hash = "#/acerca-de";
+  });
+
+  acciones.append(btnTutoriales, btnAcerca);
+  return acciones;
+}
+
 function crearTarjetas(): HTMLElement {
   const tarjetas = document.createElement("nav");
   tarjetas.className = "menu__tarjetas";
@@ -79,6 +103,19 @@ function crearTarjetaActiva(): HTMLElement {
   tarjeta.className = "tarjeta";
   tarjeta.href = "#/arregla-el-beat";
   tarjeta.append(...crearContenidoTarjeta("Arregla el beat", "Encuentra y corrige los errores del ritmo."));
+
+  const objetivo = document.createElement("span");
+  objetivo.className = "tarjeta__objetivo";
+  objetivo.textContent =
+    "Cómo se gana: corrige los golpes equivocados hasta que el beat suene igual que el original.";
+  tarjeta.append(objetivo);
+
+  const aprendes = document.createElement("span");
+  aprendes.className = "tarjeta__aprendes";
+  aprendes.textContent =
+    "Aprendes: dónde van el bombo, el clap y los hi-hats en cada estilo.";
+  tarjeta.append(aprendes);
+
   return tarjeta;
 }
 
