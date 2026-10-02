@@ -89,33 +89,36 @@ describe("iniciarApp con tutoriales didácticos", () => {
     }
   });
 
-  it("hash '#/tutoriales': 3 títulos h2 en orden 'Arregla el beat', 'Teoría del beat', 'Escalas y acordes'", () => {
+  it("hash '#/tutoriales': 4 títulos h2 en orden 'Arregla el beat', 'Teoría del beat', 'Escalas y acordes', 'Explora el sinte'", () => {
     currentHash = "#/tutoriales";
     destroyRouter = (iniciarApp as any)(root) || (() => {});
 
     const h2s = Array.from(root.querySelectorAll("h2")).map((el) => el.textContent);
-    expect(h2s).toEqual(["Arregla el beat", "Teoría del beat", "Escalas y acordes"]);
+    expect(h2s).toEqual([
+      "Arregla el beat",
+      "Teoría del beat",
+      "Escalas y acordes",
+      "Explora el sinte",
+    ]);
   });
 
-  it("hash '#/tutoriales': hay 3 botones 'Ver tutorial'", () => {
+  it("hash '#/tutoriales': hay 4 botones 'Ver tutorial'", () => {
     currentHash = "#/tutoriales";
     destroyRouter = (iniciarApp as any)(root) || (() => {});
 
     const botonesVer = Array.from(root.querySelectorAll(".tutoriales__ver"));
-    expect(botonesVer.length).toBe(3);
+    expect(botonesVer.length).toBe(4);
   });
 
-  it("hash '#/tutoriales': exactamente 2 enlaces 'Jugar' (ambos a '#/arregla-el-beat')", () => {
+  it("hash '#/tutoriales': exactamente 3 enlaces 'Jugar' (2 al beat y 1 al sinte)", () => {
     currentHash = "#/tutoriales";
     destroyRouter = (iniciarApp as any)(root) || (() => {});
 
     const enlacesJugar = Array.from(root.querySelectorAll(".tutoriales__jugar"));
-    expect(enlacesJugar.length).toBe(2);
+    expect(enlacesJugar.length).toBe(3);
 
-    const todosVanAlBeat = enlacesJugar.every(
-      (el) => (el as HTMLAnchorElement).href.endsWith("#/arregla-el-beat")
-    );
-    expect(todosVanAlBeat).toBe(true);
+    const hrefs = enlacesJugar.map((el) => (el as HTMLAnchorElement).getAttribute("href"));
+    expect(hrefs).toEqual(["#/arregla-el-beat", "#/arregla-el-beat", "#/explora-el-sinte"]);
   });
 
   it("clic en 'Ver tutorial' de 'Escalas y acordes': [role='dialog'] contiene 'C D E F G A B'", () => {

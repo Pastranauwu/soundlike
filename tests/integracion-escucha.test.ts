@@ -205,11 +205,11 @@ describe("interfaz", () => {
       expect(enlaceTeoria).not.toBeNull();
     });
 
-    it("'#/tutoriales' lista 3 tutoriales y 'Escalas y acordes' abre un diálogo saltable con 'A C E'", () => {
+    it("'#/tutoriales' lista 4 tutoriales y 'Escalas y acordes' abre un diálogo saltable con 'A C E'", () => {
       montarApp("#/tutoriales");
 
       const items = root.querySelectorAll(".tutoriales__item");
-      expect(items).toHaveLength(3);
+      expect(items).toHaveLength(4);
 
       const itemEscalas = Array.from(items).find((item) => item.querySelector("h2")?.textContent === "Escalas y acordes")!;
       expect(itemEscalas).not.toBeUndefined();
