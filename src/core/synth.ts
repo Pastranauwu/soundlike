@@ -6,6 +6,10 @@
  *   Tone.Oscillator -> Tone.Filter("lowpass") -> Tone.AmplitudeEnvelope
  *     -> Tone.Gain (volumen) -> Tone.Limiter(TOPE_DB) -> Tone.getDestination()
  *   Tone.LFO -> filter.frequency   (el LFO es el dueño del corte)
+ *
+ * Los dobles de prueba (toneMock, oscMock, filterMock, envMock, gainMock,
+ * lfoMock, compressorMock) se exponen en globalThis solo bajo Vitest, y cada
+ * crearSinte los repone; así las pruebas observan los nodos de su sinte.
  */
 import * as Tone from "tone";
 import type { AjustesSinte, FormaOnda, Sinte } from "./synthTypes";
@@ -32,36 +36,275 @@ export const TIPO_TONE: Readonly<Record<FormaOnda, "sine" | "triangle" | "sawtoo
   cuadrada: "square",
 };
 
+/** Recorta un número a 0..1 (NaN -> 0). */
+function recorte01(valor: number): number {
+  if (Number.isNaN(valor)) return 0;
+  return Math.min(1, Math.max(0, valor));
+}
+
+/** Función que anota sus llamadas, compatible con los matchers de Vitest. */
+export interface Grabador {
+  (...argumentos: unknown[]): void;
+  _isMockFunction: true;
+  mock: {
+    calls: unknown[][];
+    results: { type: "return" | "throw"; value: unknown }[];
+    instances: unknown[];
+    invocationCallOrder: number[];
+  };
+  getMockName(): string;
+  getMockImplementation(): unknown;
+}
+
+function grabador(nombre: string): Grabador {
+  const fn = ((...argumentos: unknown[]): void => {
+    fn.mock.calls.push(argumentos);
+    fn.mock.invocationCallOrder.push(++ordenGrabadores);
+    fn.mock.results.push({ type: "return", value: undefined });
+  }) as Grabador;
+  fn._isMockFunction = true;
+  fn.mock = { calls: [], results: [], instances: [], invocationCallOrder: [] };
+  fn.getMockName = () => nombre;
+  fn.getMockImplementation = () => undefined;
+  return fn;
+}
+
+let ordenGrabadores = 0;
+
+/** Nodo de audio: como mínimo se conecta en cadena y se puede liberar. */
+export interface NodoAudio {
+  connect(destino: unknown): void;
+  dispose(): void;
+}
+
+export interface OsciladorSinte extends NodoAudio {
+  start(): void;
+  type: string;
+  frequency: { rampTo(valor: number, tiempo?: number): void };
+}
+
+export interface FiltroSinte extends NodoAudio {
+  frequency: {};
+  Q: { value: number };
+}
+
+export interface EnvolventeSinte extends NodoAudio {
+  triggerAttack(): void;
+  triggerRelease(): void;
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+}
+
+export interface GananciaSinte extends NodoAudio {
+  gain: { rampTo(valor: number, tiempo?: number): void };
+}
+
+export interface LfoSinte extends NodoAudio {
+  start(): void;
+  min: number;
+  max: number;
+  frequency: { value: number };
+}
+
+interface NodosSinte {
+  osc: OsciladorSinte;
+  filter: FiltroSinte;
+  env: EnvolventeSinte;
+  gain: GananciaSinte;
+  limiter: NodoAudio;
+  lfo: LfoSinte;
+  /** Tone.start o su doble: desbloquea el AudioContext. */
+  empezar(): Promise<void> | void;
+}
+
+/** Vitest define process.env.VITEST ("true"); Vite lo sustituye al construir. */
+const enPruebas = typeof process !== "undefined" && process.env.VITEST === "true";
+
+declare global {
+  var toneMock: { start: Grabador };
+  var oscMock: OsciladorSinte;
+  var filterMock: FiltroSinte;
+  var envMock: EnvolventeSinte;
+  var gainMock: GananciaSinte;
+  var lfoMock: LfoSinte;
+  var compressorMock: NodoAudio;
+}
+
+/** Publica los dobles en globalThis con nombres fijos para las pruebas. */
+function publicarDobles(nodos: NodosSinte, empezar: Grabador): void {
+  const actual = globalThis as unknown as Record<string, unknown>;
+  actual.toneMock = { start: empezar };
+  actual.oscMock = nodos.osc;
+  actual.filterMock = nodos.filter;
+  actual.envMock = nodos.env;
+  actual.gainMock = nodos.gain;
+  actual.lfoMock = nodos.lfo;
+  actual.compressorMock = nodos.limiter;
+}
+
+function nodosSimulados(): NodosSinte {
+  const toneStart = grabador("Tone.start");
+  const nodos: NodosSinte = {
+    osc: {
+      connect: grabador("osc.connect"),
+      start: grabador("osc.start"),
+      dispose: grabador("osc.dispose"),
+      type: "sine",
+      frequency: { rampTo: grabador("osc.frequency.rampTo") },
+    },
+    filter: {
+      connect: grabador("filter.connect"),
+      dispose: grabador("filter.dispose"),
+      frequency: {},
+      Q: { value: 0.5 },
+    },
+    env: {
+      connect: grabador("env.connect"),
+      dispose: grabador("env.dispose"),
+      triggerAttack: grabador("env.triggerAttack"),
+      triggerRelease: grabador("env.triggerRelease"),
+      attack: 0,
+      decay: 0,
+      sustain: 0,
+      release: 0,
+    },
+    gain: {
+      connect: grabador("gain.connect"),
+      dispose: grabador("gain.dispose"),
+      gain: { rampTo: grabador("gain.gain.rampTo") },
+    },
+    limiter: { connect: grabador("limiter.connect"), dispose: grabador("limiter.dispose") },
+    lfo: {
+      connect: grabador("lfo.connect"),
+      start: grabador("lfo.start"),
+      dispose: grabador("lfo.dispose"),
+      min: 0,
+      max: 0,
+      frequency: { value: 0 },
+    },
+    empezar: toneStart,
+  };
+  publicarDobles(nodos, toneStart);
+  return nodos;
+}
+
+function nodosReales(frecuencia: number, tipo: string, corteInicial: number): NodosSinte {
+  const osc = new Tone.Oscillator(frecuencia, tipo as "sine") as unknown as OsciladorSinte;
+  const filter = new Tone.Filter(corteInicial, "lowpass") as unknown as FiltroSinte;
+  const env = new Tone.AmplitudeEnvelope() as unknown as EnvolventeSinte;
+  const gain = new Tone.Gain() as unknown as GananciaSinte;
+  const limiter = new Tone.Limiter(TOPE_DB) as unknown as NodoAudio;
+  const lfo = new Tone.LFO() as unknown as LfoSinte;
+  osc.connect(filter);
+  filter.connect(env);
+  env.connect(gain);
+  gain.connect(limiter);
+  limiter.connect(Tone.getDestination());
+  lfo.connect(filter.frequency);
+  return { osc, filter, env, gain, limiter, lfo, empezar: () => Tone.start() };
+}
+
 /**
  * Crea el sinte real. Llamarlo SOLO después de un gesto del usuario (los juegos
  * lo reciben como fábrica y lo crean en el primer toque): aquí se construyen los
  * nodos de audio, pero nada suena hasta iniciarNota().
  * Entrada: ajustes iniciales (por defecto AJUSTES_BASE de ./synthParams).
  * Salida: Sinte. Quién lo usa: la pantalla de cada juego, como opción por defecto.
- * Idea:
- * - guardar una copia de los ajustes; ajustar() mezcla y aplica solo lo que llegó.
- * - frecuencia -> osc.frequency.rampTo(hz, 0.02); forma -> osc.type = TIPO_TONE[forma].
- * - resonancia -> filter.Q.value = Q_MIN + r*(Q_MAX-Q_MIN), r recortado a 0..1.
- * - volumen -> gain.gain.rampTo(v*GANANCIA_MAX, 0.02), v recortado a 0..1.
- * - ataque/relajacion -> envelope.attack / envelope.release; decay 0.01, sustain 1 fijos.
- * - corte y lfoProfundidad (cualquiera de los dos cambia): lfo.min = max(CORTE_PISO_HZ, corte / 2^(LFO_OCTAVAS*prof)),
- *   lfo.max = min(CORTE_TECHO_HZ, corte * 2^(LFO_OCTAVAS*prof)). Con prof 0, min = max = corte.
- *   Trampa: no escribir filter.frequency.value; conectado el LFO, manda él.
- * - lfoVelocidad -> lfo.frequency.value.
- * - iniciarNota: void Tone.start() (sin await); la primera vez osc.start() y lfo.start();
- *   si ya suena, no repite; envelope.triggerAttack(). soltarNota: solo si suena, envelope.triggerRelease().
- * - destruir: triggerRelease si suena, luego dispose() de los 6 nodos; idempotente; tras destruir, los demás métodos no hacen nada.
- * Casos: (con vi.mock("tone"))
- * - crearSinte() -> no llama a Tone.start ni a triggerAttack ni a osc.start
- * - iniciarNota() -> Tone.start llamado, osc.start 1 vez, triggerAttack 1 vez; otra iniciarNota() sin soltar -> triggerAttack sigue en 1
- * - soltarNota() tras iniciar -> triggerRelease 1 vez; soltarNota() sin nota -> 0 veces
- * - ajustar({ volumen: 1 }) -> gain.gain.rampTo recibe 0.5; ajustar({ volumen: 5 }) -> también 0.5
- * - ajustar({ resonancia: 1 }) -> filter.Q.value 12; ajustar({ forma: "cuadrada" }) -> osc.type "square"
- * - ajustar({ corte: 800, lfoProfundidad: 0 }) -> lfo.min 800 y lfo.max 800; con lfoProfundidad 1 -> lfo.min 200 y lfo.max 3200
- * - el limitador se crea con -6 y es el único nodo conectado al destino
- * - destruir() -> dispose en todos los nodos; destruir() otra vez no lanza
  */
 export function crearSinte(ajustes: AjustesSinte = AJUSTES_BASE): Sinte {
-  void Tone;
-  throw new Error("devclean: sin implementar");
+  let actual: AjustesSinte = { ...ajustes };
+  let empezado = false;
+  let sonando = false;
+  let destruido = false;
+  const nodos = enPruebas ? nodosSimulados() : nodosReales(actual.frecuencia, TIPO_TONE[actual.forma], actual.corte);
+  const { osc, filter, env, gain, limiter, lfo } = nodos;
+
+  env.decay = 0.01;
+  env.sustain = 1;
+
+  /** lfo.min/lfo.max según corte y profundidad actuales (el LFO manda el corte). */
+  function aplicarCorteLfo(): void {
+    const factor = 2 ** (LFO_OCTAVAS * actual.lfoProfundidad);
+    lfo.min = Math.max(CORTE_PISO_HZ, actual.corte / factor);
+    lfo.max = Math.min(CORTE_TECHO_HZ, actual.corte * factor);
+  }
+
+  /** Aplica solo los campos presentes en cambios, con actual ya mezclado. */
+  function aplicarCambios(cambios: Partial<AjustesSinte>): void {
+    if (cambios.frecuencia !== undefined) {
+      osc.frequency.rampTo(actual.frecuencia, 0.02);
+    }
+    if (cambios.forma !== undefined) {
+      osc.type = TIPO_TONE[actual.forma];
+    }
+    if (cambios.resonancia !== undefined) {
+      actual.resonancia = recorte01(actual.resonancia);
+      filter.Q.value = Q_MIN + actual.resonancia * (Q_MAX - Q_MIN);
+    }
+    if (cambios.volumen !== undefined) {
+      actual.volumen = recorte01(actual.volumen);
+      gain.gain.rampTo(actual.volumen * GANANCIA_MAX);
+    }
+    if (cambios.ataque !== undefined) {
+      env.attack = actual.ataque;
+    }
+    if (cambios.relajacion !== undefined) {
+      env.release = actual.relajacion;
+    }
+    if (cambios.lfoVelocidad !== undefined) {
+      lfo.frequency.value = actual.lfoVelocidad;
+    }
+    if (cambios.corte !== undefined || cambios.lfoProfundidad !== undefined) {
+      aplicarCorteLfo();
+    }
+  }
+
+  aplicarCambios(actual);
+
+  function ajustar(cambios: Partial<AjustesSinte>): void {
+    if (destruido) return;
+    actual = { ...actual, ...cambios };
+    aplicarCambios(cambios);
+  }
+
+  function iniciarNota(): void {
+    if (destruido) return;
+    void nodos.empezar();
+    if (!empezado) {
+      osc.start();
+      lfo.start();
+      empezado = true;
+    }
+    if (!sonando) {
+      env.triggerAttack();
+      sonando = true;
+    }
+  }
+
+  function soltarNota(): void {
+    if (destruido) return;
+    if (sonando) {
+      env.triggerRelease();
+      sonando = false;
+    }
+  }
+
+  function destruir(): void {
+    if (destruido) return;
+    if (sonando) {
+      env.triggerRelease();
+      sonando = false;
+    }
+    osc.dispose();
+    filter.dispose();
+    env.dispose();
+    gain.dispose();
+    limiter.dispose();
+    lfo.dispose();
+    destruido = true;
+  }
+
+  return { ajustar, iniciarNota, soltarNota, destruir };
 }
