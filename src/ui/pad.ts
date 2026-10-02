@@ -17,11 +17,15 @@
  *     </div>
  *     <span class="pad__eje pad__eje--x" aria-hidden="true">Corte →</span>
  *   </div>
+ *   <p class="pad__estilo" hidden></p>
  *   <div class="pad__lectura" aria-live="polite">
  *     <p class="pad__valor pad__valor--x">Horizontal · Corte: 1.2 kHz</p>
  *     <p class="pad__valor pad__valor--y">Vertical · Resonancia: 40 %</p>
  *   </div>
  * </div>
+ * El estilo (si lo hay) pinta el pad y la lectura: `ponerEstilo` pone
+ * style.--pad-color y data-estilo en el elemento raíz .pad, y el nombre del
+ * estilo en .pad__estilo (visible); app.css consume var(--pad-color...).
  * El punto y el objetivo se colocan con style.left = x*100 % y style.bottom = y*100 %
  * (origen abajo a la izquierda). data-sonando="true" mientras la nota está mantenida.
  */
@@ -37,6 +41,16 @@ export interface EjePad {
   nombre: string;
   /** Texto completo del valor para una posición 0..1, p. ej. (0.5) -> "Corte: 800 Hz". Si falta, se usa un texto genérico con el nombre. */
   etiqueta?(posicion: number): string;
+}
+
+/** Estilo musical que colorea el pad (lo que sabe el pad, sin conocer core/synthStyles). */
+export interface EstiloPad {
+  /** Id de data-estilo, p. ej. "noventero". */
+  id: string;
+  /** Nombre visible, p. ej. "Sinte noventero". */
+  nombre: string;
+  /** Color CSS, p. ej. "#8b5cf6". */
+  color: string;
 }
 
 export interface OpcionesPad {
@@ -62,6 +76,23 @@ export interface PadUI {
   ponerEjes(ejeHorizontal: EjePad, ejeVertical: EjePad): void;
   /** Dibuja el objetivo en esa posición, o lo oculta con null. */
   mostrarObjetivo(posicion: PosicionPad | null): void;
+  /**
+   * Pinta el pad y su lectura con el color y el nombre del estilo.
+   * Con null vuelve al tema (quita data-estilo, --pad-color y oculta .pad__estilo).
+   * No toca el punto ni la posición.
+   *
+   * Idea: guardar `estiloActual: EstiloPad | null` y repintar. Con estilo:
+   * elemento.style.setProperty("--pad-color", estilo.color), elemento.dataset.estilo
+   * = estilo.id y `.pad__estilo`.textContent = estilo.nombre + hidden = false.
+   * Con null: removeProperty("--pad-color"), delete dataset.estilo, `.pad__estilo`
+   * hidden = true. El elemento raíz es `.pad` (no el área): data-estilo debe
+   * quedar en `.pad` para que la lectura también se tiña. No tocar punto/posición.
+   * Casos:
+   * - ponerEstilo({id:"rave",nombre:"Sinte de rave electrónico",color:"#22d3ee"}) -> raíz data-estilo "rave", style --pad-color "#22d3ee", .pad__estilo visible con el nombre.
+   * - ponerEstilo(null) tras uno -> sin data-estilo, sin --pad-color y .pad__estilo hidden.
+   * - estilo con color distinto -> --pad-color cambia y el punto sigue en su sitio.
+   */
+  ponerEstilo(estilo: EstiloPad | null): void;
   /** true mientras la nota está mantenida. */
   sonando(): boolean;
   /** Si la nota está mantenida la suelta (llama a alSoltar una vez). El punto se queda donde está. */
@@ -305,6 +336,9 @@ export function crearPad(opciones: OpcionesPad): PadUI {
       objetivo.style.left = comoPorcentaje(recortada.x);
       objetivo.style.bottom = comoPorcentaje(recortada.y);
       objetivo.hidden = false;
+    },
+    ponerEstilo(_estilo: EstiloPad | null): void {
+      throw new Error("devclean: sin implementar");
     },
     sonando: () => sonandoActual,
     soltar: () => soltarMantenida(),

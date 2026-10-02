@@ -2,6 +2,7 @@
  * Tipos del juego "Explora el sinte". Solo DECLARACIONES, sin lógica.
  * Los usan lecciones.ts, reto.ts, progreso.ts y screen.ts.
  */
+import type { IdEstilo } from "../../core/synthStyles";
 import type { AjustesSinte, IdParametro, PosicionPad } from "../../core/synthTypes";
 
 /** Eje del pad. */
@@ -63,4 +64,26 @@ export interface ProgresoLecciones {
   /** Ids de lecciones resueltas, sin duplicados. */
   resueltas(): string[];
   marcarResuelta(id: string): void;
+}
+
+/** Una combinación guardada del patio libre: estilo, ejes y punto del pad. */
+export interface PresetPatio {
+  /** Nombre visible elegido por el jugador. Clave única (reemplaza al guardar). */
+  nombre: string;
+  idEstilo: IdEstilo;
+  ejes: EjesLeccion;
+  posicion: PosicionPad;
+}
+
+/**
+ * Puerto: recuerda los presets del patio libre.
+ * Implementación real: presets.ts (localStorage). En pruebas, un fake en memoria.
+ */
+export interface PresetsPatio {
+  /** Presets guardados, en orden de guardado. */
+  listar(): PresetPatio[];
+  /** Agrega el preset o reemplaza el que tenga el mismo `nombre`. */
+  guardar(preset: PresetPatio): void;
+  /** Quita el preset con ese nombre; si no existe, no hace nada. */
+  borrar(nombre: string): void;
 }

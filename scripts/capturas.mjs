@@ -232,6 +232,14 @@ await intenta("patio libre: elegir ejes", async () => {
   await desktop.locator(".sinte__eje-y").selectOption("lfoProfundidad", { timeout: TIMEOUT });
 });
 await png(desktop, "48-sinte-patio-libre-ejes-elegidos");
+await intenta("patio libre: elegir el estilo 'Sinte de rave electrónico'", () =>
+  click(desktop, '.sinte__estilo[data-estilo="rave"]'));
+await png(desktop, "48b-sinte-patio-libre-estilo-elegido");
+await intenta("patio libre: guardar un preset", async () => {
+  await desktop.locator(".sinte__preset-nombre").fill("mi rave", { timeout: TIMEOUT });
+  await click(desktop, ".sinte__preset-guardar");
+});
+await png(desktop, "48c-sinte-patio-libre-preset-guardado");
 await intenta("índice: saltar a la lección 3", () =>
   click(desktop, ".sinte__indice li:nth-child(3) button"));
 await png(desktop, "49-sinte-indice-salta-a-leccion-3");
@@ -287,6 +295,8 @@ await intenta("Comprobar en celular", () => click(movil, ".sinte .juego__comprob
 await png(movil, "55-sinte-celular-resultado");
 await intenta("índice: patio libre en celular", () =>
   click(movil, ".sinte__indice li:nth-child(6) button"));
+await intenta("patio libre en celular: elegir un estilo", () =>
+  click(movil, '.sinte__estilo[data-estilo="acid"]'));
 await png(movil, "56-sinte-celular-patio-libre");
 await movil.context().close();
 
