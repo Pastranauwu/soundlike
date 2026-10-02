@@ -49,16 +49,19 @@ export const AJUSTES_BASE: AjustesSinte = {
   lfoProfundidad: 0,
 };
 
-/**
- * Ficha del parámetro (busca en PARAMETROS).
- * Errores: lanza Error("Parámetro desconocido: <id>") si no existe.
- * Casos:
- * - definicionParametro("corte") -> { nombre: "Corte", unidad: "Hz", min: 80, max: 8000, ... }
- * - definicionParametro("relajacion").nombre -> "Relajación"
- * - definicionParametro("x" as IdParametro) -> lanza Error
- */
+/** Recorta una posición a 0..1 (NaN se trata como 0). */
+function recortarPosicion(posicion: number): number {
+  if (Number.isNaN(posicion)) return 0;
+  return Math.min(1, Math.max(0, posicion));
+}
+
+/** Ficha del parámetro (busca en PARAMETROS). */
 export function definicionParametro(id: IdParametro): DefinicionParametro {
-  throw new Error("devclean: sin implementar");
+  const definicion = PARAMETROS.find((parametro) => parametro.id === id);
+  if (!definicion) {
+    throw new Error(`Parámetro desconocido: ${id}`);
+  }
+  return definicion;
 }
 
 /**
@@ -66,98 +69,100 @@ export function definicionParametro(id: IdParametro): DefinicionParametro {
  * Entrada: posicion; fuera de 0..1 se recorta (NaN -> 0).
  * Salida: Hz, segundos, 0..1 o, para "forma", el índice 0..3 de FORMAS_ONDA.
  * Usa: definicionParametro. Lo usan aplicarParametro, etiquetaPosicion y los juegos.
- * Idea:
- * - lineal: min + p*(max-min). exponencial: min * (max/min)^p.
- * - zonas: floor(p*4), y p = 1 cae en 3 (no en 4).
- * - sin redondear: el tono es continuo (no se cuantiza a semitonos) para que ida y vuelta sea exacta.
- * Casos:
- * - valorDesdePosicion("tono", 0) -> 65.406 (C2, ±0.01); ("tono", 1) -> 1046.502 (C6, ±0.01)
- * - valorDesdePosicion("corte", 0.5) -> 800 (±1)
- * - valorDesdePosicion("volumen", 0.4) -> 0.4; ("ataque", 0) -> 0.005; ("relajacion", 1) -> 3
- * - valorDesdePosicion("lfoVelocidad", 0) -> 0.1; ("lfoVelocidad", 1) -> 20
- * - valorDesdePosicion("forma", 0.1) -> 0; (0.3) -> 1; (0.6) -> 2; (0.9) -> 3; (1) -> 3
- * - valorDesdePosicion("corte", 1.7) -> 8000; ("corte", -1) -> 80
  */
 export function valorDesdePosicion(id: IdParametro, posicion: number): number {
-  throw new Error("devclean: sin implementar");
+  const definicion = definicionParametro(id);
+  const p = recortarPosicion(posicion);
+  switch (definicion.escala) {
+    case "lineal":
+      return definicion.min + p * (definicion.max - definicion.min);
+    case "exponencial":
+      return definicion.min * (definicion.max / definicion.min) ** p;
+    case "zonas":
+      return Math.min(3, Math.floor(p * 4));
+  }
 }
 
 /**
  * Valor del parámetro -> posición del eje (0..1). Inversa de valorDesdePosicion.
  * Entrada: valor en la unidad del parámetro; fuera de rango se recorta a min..max.
- * Idea:
- * - lineal: (v-min)/(max-min). exponencial: ln(v/min)/ln(max/min).
- * - zonas: centro de la zona = (indice + 0.5)/4 con indice redondeado y recortado a 0..3.
- *   Trampa: para "forma" la ida y vuelta solo es exacta en los centros 0.125, 0.375, 0.625, 0.875.
- * Casos:
- * - posicionDesdeValor("corte", 800) -> 0.5 (±0.001)
- * - posicionDesdeValor("tono", 65.406) -> 0 (±0.001); ("tono", 1046.502) -> 1 (±0.001)
- * - para cada parámetro que no es "forma" y p en {0, 0.13, 0.5, 0.87, 1}:
- *   posicionDesdeValor(id, valorDesdePosicion(id, p)) -> p (±0.001)
- * - posicionDesdeValor("forma", 2) -> 0.625; posicionDesdeValor("forma", valorDesdePosicion("forma", 0.375)) -> 0.375
- * - posicionDesdeValor("corte", 99999) -> 1
+ * Para "forma" la ida y vuelta solo es exacta en los centros 0.125, 0.375, 0.625, 0.875:
+ * usa el centro de la zona del índice redondeado y recortado a 0..3.
  */
 export function posicionDesdeValor(id: IdParametro, valor: number): number {
-  throw new Error("devclean: sin implementar");
+  const definicion = definicionParametro(id);
+  const v = Math.min(definicion.max, Math.max(definicion.min, valor));
+  switch (definicion.escala) {
+    case "lineal":
+      return (v - definicion.min) / (definicion.max - definicion.min);
+    case "exponencial":
+      return Math.log(v / definicion.min) / Math.log(definicion.max / definicion.min);
+    case "zonas": {
+      const indice = Math.min(3, Math.max(0, Math.round(v)));
+      return (indice + 0.5) / 4;
+    }
+  }
 }
 
-/**
- * Forma de onda de una posición: el eje se parte en 4 zonas iguales.
- * Usa: valorDesdePosicion("forma", p) como índice de FORMAS_ONDA.
- * Casos:
- * - formaDesdePosicion(0) -> "seno"; (0.24) -> "seno"; (0.25) -> "triangulo"
- * - formaDesdePosicion(0.6) -> "sierra"; (0.8) -> "cuadrada"; (1) -> "cuadrada"
- */
+/** Forma de onda de una posición: el eje se parte en 4 zonas iguales. */
 export function formaDesdePosicion(posicion: number): FormaOnda {
-  throw new Error("devclean: sin implementar");
+  return FORMAS_ONDA[valorDesdePosicion("forma", posicion)];
 }
 
-/**
- * Texto corto del valor, sin el nombre del parámetro.
- * Idea: (formato por parámetro; punto decimal, nunca coma)
- * - tono: nota más cercana con octava. midi = round(69 + 12*log2(hz/440));
- *   nombres ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]; octava = floor(midi/12) - 1.
- * - corte: < 1000 -> "<entero> Hz"; >= 1000 -> "<1 decimal> kHz".
- * - volumen, resonancia, lfoProfundidad: round(v*100) + " %".
- * - ataque, relajacion: < 1 s -> "<entero> ms"; >= 1 -> "<1 decimal> s".
- * - lfoVelocidad: "<1 decimal> Hz".
- * - forma: NOMBRES_FORMA de FORMAS_ONDA[indice redondeado y recortado].
- * Casos:
- * - textoValor("corte", 1200) -> "1.2 kHz"; ("corte", 800) -> "800 Hz"
- * - textoValor("tono", 220) -> "A3"; ("tono", 65.41) -> "C2"; ("tono", 1046.5) -> "C6"
- * - textoValor("resonancia", 0.4) -> "40 %"
- * - textoValor("ataque", 0.005) -> "5 ms"; ("relajacion", 1.25) -> "1.3 s" o "1.2 s" (toFixed(1)); ("relajacion", 3) -> "3.0 s"
- * - textoValor("lfoVelocidad", 2) -> "2.0 Hz"; textoValor("forma", 2) -> "Sierra"
- */
+/** Nombres de las notas en orden cromático desde C, para textoValor("tono", ...). */
+const NOMBRES_NOTA = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/** Nota más cercana con octava, p. ej. "A3", a partir de su frecuencia en Hz. */
+function notaDesdeFrecuencia(hz: number): string {
+  const midi = Math.round(69 + 12 * Math.log2(hz / 440));
+  const octava = Math.floor(midi / 12) - 1;
+  const nombre = NOMBRES_NOTA[((midi % 12) + 12) % 12];
+  return `${nombre}${octava}`;
+}
+
+/** Texto corto del valor, sin el nombre del parámetro (punto decimal, nunca coma). */
 export function textoValor(id: IdParametro, valor: number): string {
-  throw new Error("devclean: sin implementar");
+  switch (id) {
+    case "tono":
+      return notaDesdeFrecuencia(valor);
+    case "corte":
+      return valor < 1000 ? `${Math.round(valor)} Hz` : `${(valor / 1000).toFixed(1)} kHz`;
+    case "volumen":
+    case "resonancia":
+    case "lfoProfundidad":
+      return `${Math.round(valor * 100)} %`;
+    case "ataque":
+    case "relajacion":
+      return valor < 1 ? `${Math.round(valor * 1000)} ms` : `${valor.toFixed(1)} s`;
+    case "lfoVelocidad":
+      return `${valor.toFixed(1)} Hz`;
+    case "forma": {
+      const indice = Math.min(3, Math.max(0, Math.round(valor)));
+      return NOMBRES_FORMA[FORMAS_ONDA[indice]];
+    }
+  }
 }
 
 /**
  * Etiqueta completa "<Nombre>: <texto del valor>" para la posición de un eje.
- * Usa: definicionParametro, valorDesdePosicion, textoValor. La usa la pantalla
- * del juego para la lectura del pad.
- * Casos:
- * - etiquetaPosicion("corte", 0.5) -> "Corte: 800 Hz"
- * - etiquetaPosicion("resonancia", 0.4) -> "Resonancia: 40 %"
- * - etiquetaPosicion("tono", 0) -> "Tono: C2"
- * - etiquetaPosicion("forma", 0.9) -> "Forma de onda: Cuadrada"
+ * La usa la pantalla del juego para la lectura del pad.
  */
 export function etiquetaPosicion(id: IdParametro, posicion: number): string {
-  throw new Error("devclean: sin implementar");
+  const definicion = definicionParametro(id);
+  const valor = valorDesdePosicion(id, posicion);
+  return `${definicion.nombre}: ${textoValor(id, valor)}`;
 }
 
 /**
  * Devuelve el cambio de AjustesSinte que corresponde a poner un parámetro en una
  * posición del eje (para pasarlo a Sinte.ajustar o mezclarlo con {...ajustes}).
- * Idea: campo según id — tono -> frecuencia; forma -> forma (FormaOnda, no índice);
- * el resto lleva el mismo nombre que su id. Un solo campo en el objeto devuelto.
- * Casos:
- * - cambioDesdePosicion("corte", 0.5) -> { corte: 800 } (±1)
- * - cambioDesdePosicion("tono", 0) -> { frecuencia: 65.406 } (±0.01)
- * - cambioDesdePosicion("forma", 0.3) -> { forma: "triangulo" }
- * - cambioDesdePosicion("lfoProfundidad", 0.25) -> { lfoProfundidad: 0.25 }
  */
 export function cambioDesdePosicion(id: IdParametro, posicion: number): Partial<AjustesSinte> {
-  throw new Error("devclean: sin implementar");
+  if (id === "tono") {
+    return { frecuencia: valorDesdePosicion(id, posicion) };
+  }
+  if (id === "forma") {
+    return { forma: formaDesdePosicion(posicion) };
+  }
+  return { [id]: valorDesdePosicion(id, posicion) };
 }
