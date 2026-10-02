@@ -12,17 +12,37 @@ export const CLAVE_PROGRESO_SINTE = "soundlike:explora-el-sinte:resueltas";
  * Crea el progreso.
  * Entrada: almacen — un Storage; por defecto globalThis.localStorage, o null si no
  *   existe o leerlo lanza (modo privado). Con null vive solo en memoria.
- * Idea: mismo patrón que src/ui/registroTutoriales.ts — Set en memoria cargado al crear;
- * marcarResuelta agrega y guarda el JSON; todo dentro de try: nunca lanza (JSON corrupto
- * o que no es un array de textos = lista vacía; setItem que lanza = queda en memoria).
- * resueltas() devuelve una copia, en orden de inserción.
- * Casos:
- * - almacén vacío -> resueltas() -> []
- * - marcarResuelta("filtro") -> resueltas() -> ["filtro"] y getItem(CLAVE_PROGRESO_SINTE) === '["filtro"]'
- * - marcarResuelta("filtro") dos veces -> sin duplicados
- * - otro crearProgreso sobre el mismo almacén -> resueltas() -> ["filtro"]
- * - almacén con "{no-json" -> [] sin lanzar; almacen null -> marcar y leer funciona en memoria
  */
 export function crearProgreso(almacen?: Storage | null): ProgresoLecciones {
-  throw new Error("devclean: sin implementar");
+  let resueltas = new Set<string>();
+
+  if (almacen) {
+    try {
+      const valor = almacen.getItem(CLAVE_PROGRESO_SINTE);
+      if (valor) {
+        const parsed = JSON.parse(valor);
+        if (Array.isArray(parsed)) {
+          resueltas = new Set(parsed);
+        }
+      }
+    } catch {
+      // JSON inválido o getItem lanzó: tratar como lista vacía
+    }
+  }
+
+  return {
+    resueltas(): string[] {
+      return Array.from(resueltas);
+    },
+    marcarResuelta(id: string): void {
+      resueltas.add(id);
+      if (almacen) {
+        try {
+          almacen.setItem(CLAVE_PROGRESO_SINTE, JSON.stringify(Array.from(resueltas)));
+        } catch {
+          // setItem lanzó: la memoria ya tiene el id
+        }
+      }
+    },
+  };
 }
