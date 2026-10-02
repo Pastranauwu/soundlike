@@ -16,6 +16,8 @@ import {
   etiquetaPosicion,
   PARAMETROS,
 } from "../../core/synthParams";
+import { estiloPorId, obtenerEstilos } from "../../core/synthStyles";
+import type { EstiloMusical, IdEstilo } from "../../core/synthStyles";
 import type { AjustesSinte, IdParametro, PosicionPad, Sinte } from "../../core/synthTypes";
 import type { Puntaje } from "../../core/types";
 import { crearPad } from "../../ui/pad";
@@ -25,6 +27,7 @@ import { crearTutorialUI } from "../../ui/tutorial";
 import type { TutorialUI } from "../../ui/tutorial";
 import type { RegistroTutoriales, Tutorial } from "../../ui/types";
 import { obtenerLecciones } from "./lecciones";
+import { crearPresets } from "./presets";
 import { crearProgreso } from "./progreso";
 import { comprobarReto, crearReto, FALLOS_PARA_VER_OBJETIVO } from "./reto";
 import { obtenerTutorialSinte } from "./tutorial";
@@ -33,6 +36,8 @@ import type {
   EjesLeccion,
   EstadoReto,
   Leccion,
+  PresetPatio,
+  PresetsPatio,
   ProgresoLecciones,
 } from "./types";
 
@@ -63,6 +68,10 @@ export interface OpcionesPantallaSinte {
   registroTutoriales?: RegistroTutoriales;
   /** Por defecto crearProgreso() de ./progreso. */
   progreso?: ProgresoLecciones;
+  /** Estilos musicales del patio libre. Por defecto obtenerEstilos() de core/synthStyles. */
+  estilos?: EstiloMusical[];
+  /** Presets guardados del patio libre. Por defecto crearPresets() de ./presets. */
+  presets?: PresetsPatio;
 }
 
 export interface PantallaSinte {
@@ -78,8 +87,14 @@ interface DomSinte {
   leccion: HTMLElement;
   tituloLeccion: HTMLElement;
   libre: HTMLElement;
+  estilos: HTMLElement;
+  botonesEstilo: HTMLButtonElement[];
   selectX: HTMLSelectElement;
   selectY: HTMLSelectElement;
+  formPresets: HTMLFormElement;
+  presetNombre: HTMLInputElement;
+  presetGuardar: HTMLButtonElement;
+  presetLista: HTMLUListElement;
   reto: HTMLElement;
   ayudaPista: HTMLElement;
   escuchar: HTMLButtonElement;
@@ -110,11 +125,14 @@ export function crearPantallaSinte(opciones: OpcionesPantallaSinte = {}): Pantal
   const tutorial = opciones.tutorial ?? obtenerTutorialSinte();
   const registroTutoriales = opciones.registroTutoriales ?? crearRegistroTutoriales();
   const progreso = opciones.progreso ?? crearProgreso();
+  const estilos = opciones.estilos ?? obtenerEstilos();
+  const presets = opciones.presets ?? crearPresets();
 
-  const dom = crearDom(tutorial, lecciones);
+  const dom = crearDom(tutorial, lecciones, estilos);
 
   let indice = 0;
   let ejesActuales: EjesLeccion = { ...lecciones[0].ejes };
+  let idEstiloActual: IdEstilo = estilos[0].id;
   let puntaje: Puntaje = crearPuntaje();
   const estadosReto = new Map<number, EstadoReto>();
   const resueltas = new Set(progreso.resueltas());
@@ -147,9 +165,13 @@ export function crearPantallaSinte(opciones: OpcionesPantallaSinte = {}): Pantal
     return { nombre: definicionParametro(id).nombre, etiqueta: (p) => etiquetaPosicion(id, p) };
   }
 
+  function ajustesBase(): AjustesSinte {
+    return lecciones[indice].libre ? estiloPorId(idEstiloActual).ajustes : lecciones[indice].ajustes;
+  }
+
   function ajustesEnPosicion(posicion: PosicionPad): AjustesSinte {
     return {
-      ...lecciones[indice].ajustes,
+      ...ajustesBase(),
       ...cambioDesdePosicion(ejesActuales.x, posicion.x),
       ...cambioDesdePosicion(ejesActuales.y, posicion.y),
     };
@@ -157,10 +179,61 @@ export function crearPantallaSinte(opciones: OpcionesPantallaSinte = {}): Pantal
 
   function ajustesEnObjetivo(objetivo: PosicionPad): AjustesSinte {
     return {
-      ...lecciones[indice].ajustes,
+      ...ajustesBase(),
       ...cambioDesdePosicion(ejesActuales.x, objetivo.x),
       ...cambioDesdePosicion(ejesActuales.y, objetivo.y),
     };
+  }
+
+  function aplicarEstilo(id: IdEstilo): void {
+    idEstiloActual = id;
+    dom.botonesEstilo.forEach((boton) => {
+      boton.setAttribute("aria-pressed", String(boton.dataset.estilo === id));
+    });
+    const estilo = estiloPorId(id);
+    pad.ponerEstilo({ id: estilo.id, nombre: estilo.nombre, color: estilo.color });
+    if (sinte !== null) sinte.ajustar(ajustesEnPosicion(pad.posicion()));
+  }
+
+  function cargarPreset(preset: PresetPatio): void {
+    aplicarEstilo(preset.idEstilo);
+    ejesActuales = { ...preset.ejes };
+    pad.ponerEjes(ejePad(ejesActuales.x), ejePad(ejesActuales.y));
+    dom.selectX.value = ejesActuales.x;
+    dom.selectY.value = ejesActuales.y;
+    pad.ponerPosicion(preset.posicion);
+    if (sinte !== null) sinte.ajustar(ajustesEnPosicion(pad.posicion()));
+  }
+
+  function guardarPreset(): void {
+    const nombre = dom.presetNombre.value.trim();
+    if (nombre === "") return;
+    presets.guardar({
+      nombre,
+      idEstilo: idEstiloActual,
+      ejes: { ...ejesActuales },
+      posicion: pad.posicion(),
+    });
+    dom.presetNombre.value = "";
+    pintarPresets();
+  }
+
+  function pintarPresets(): void {
+    dom.presetLista.replaceChildren(
+      ...presets.listar().map((preset) => {
+        const item = crearElemento("li", "sinte__preset");
+        const titulo = crearElemento("span", "sinte__preset-titulo", preset.nombre);
+        const cargar = crearBoton("sinte__preset-cargar", "Cargar");
+        const borrar = crearBoton("sinte__preset-borrar", "Borrar");
+        cargar.addEventListener("click", () => cargarPreset(preset));
+        borrar.addEventListener("click", () => {
+          presets.borrar(preset.nombre);
+          pintarPresets();
+        });
+        item.append(titulo, cargar, borrar);
+        return item;
+      }),
+    );
   }
 
   function obtenerSinte(): Sinte {
@@ -236,6 +309,11 @@ export function crearPantallaSinte(opciones: OpcionesPantallaSinte = {}): Pantal
     pintarFrases(leccion.frases);
 
     dom.libre.hidden = !leccion.libre;
+    if (leccion.libre) {
+      aplicarEstilo(idEstiloActual);
+    } else {
+      pad.ponerEstilo(null);
+    }
     dom.reto.hidden = !leccion.conReto;
     dom.anterior.disabled = indice === 0;
     dom.siguiente.disabled = indice === lecciones.length - 1;
@@ -396,8 +474,16 @@ export function crearPantallaSinte(opciones: OpcionesPantallaSinte = {}): Pantal
   dom.escuchar.addEventListener("click", escucharObjetivo);
   dom.comprobar.addEventListener("click", comprobar);
   dom.como.addEventListener("click", abrirTutorial);
+  dom.botonesEstilo.forEach((boton) => {
+    boton.addEventListener("click", () => aplicarEstilo(boton.dataset.estilo as IdEstilo));
+  });
+  dom.formPresets.addEventListener("submit", (evento) => {
+    evento.preventDefault();
+    guardarPreset();
+  });
 
   pintarLeccion(false);
+  pintarPresets();
   if (!registroTutoriales.visto(tutorial.id)) abrirTutorial();
   window.addEventListener("hashchange", destruir);
 
@@ -445,7 +531,7 @@ function crearSelect(clase: string): HTMLSelectElement {
   return select;
 }
 
-function crearDom(tutorial: Tutorial, lecciones: Leccion[]): DomSinte {
+function crearDom(tutorial: Tutorial, lecciones: Leccion[], estilos: EstiloMusical[]): DomSinte {
   const seccion = crearElemento("main", "juego sinte");
 
   const superior = crearElemento("header", "juego__superior");
@@ -485,13 +571,31 @@ function crearDom(tutorial: Tutorial, lecciones: Leccion[]): DomSinte {
 
   const libre = crearElemento("div", "sinte__libre");
   libre.hidden = true;
+  const estilosFieldset = crearElemento("fieldset", "sinte__estilos");
+  estilosFieldset.append(crearElemento("legend", "", "Estilo"));
+  const botonesEstilo = estilos.map((estilo) => {
+    const boton = crearBoton("sinte__estilo", estilo.nombre);
+    boton.dataset.estilo = estilo.id;
+    boton.style.setProperty("--estilo-color", estilo.color);
+    boton.setAttribute("aria-pressed", "false");
+    estilosFieldset.append(boton);
+    return boton;
+  });
   const selectX = crearSelect("sinte__eje-x");
   const selectY = crearSelect("sinte__eje-y");
   const labelX = crearElemento("label", "");
   labelX.append("Eje horizontal ", selectX);
   const labelY = crearElemento("label", "");
   labelY.append("Eje vertical ", selectY);
-  libre.append(labelX, labelY);
+  const formPresets = crearElemento("form", "sinte__presets");
+  const presetNombre = crearElemento("input", "sinte__preset-nombre");
+  presetNombre.type = "text";
+  presetNombre.setAttribute("aria-label", "Nombre del preset");
+  const presetGuardar = crearBoton("sinte__preset-guardar", "Guardar preset");
+  presetGuardar.type = "submit";
+  formPresets.append(presetNombre, presetGuardar);
+  const presetLista = crearElemento("ul", "sinte__preset-lista");
+  libre.append(estilosFieldset, labelX, labelY, formPresets, presetLista);
 
   const aviso = crearElemento("p", "sinte__aviso", AVISO_AUDIO);
 
@@ -540,8 +644,14 @@ function crearDom(tutorial: Tutorial, lecciones: Leccion[]): DomSinte {
     leccion,
     tituloLeccion,
     libre,
+    estilos: estilosFieldset,
+    botonesEstilo,
     selectX,
     selectY,
+    formPresets,
+    presetNombre,
+    presetGuardar,
+    presetLista,
     reto,
     ayudaPista,
     escuchar,
