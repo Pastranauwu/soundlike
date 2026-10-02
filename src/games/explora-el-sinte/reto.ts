@@ -5,6 +5,21 @@
 import type { IdParametro, PosicionPad } from "../../core/synthTypes";
 import type { Eje, EjesLeccion, EstadoReto, ResultadoReto } from "./types";
 
+/**
+ * Ejes de entrada: igual de forma que EjesLeccion, pero sin forzar los literales de
+ * IdParametro. Así se acepta cualquier valor construido en tiempo de ejecución
+ * (por ejemplo, objetos armados en pruebas) sin perder la forma del contrato.
+ */
+type EjesComoTexto = Record<Eje, string>;
+
+/** Igual que EstadoReto, pero con EjesComoTexto en vez de EjesLeccion. */
+interface EstadoRetoComoTexto {
+  ejes: EjesComoTexto;
+  semilla: number;
+  objetivo: PosicionPad;
+  fallos: number;
+}
+
 /** Distancia máxima por eje para acertar (12 % del pad). */
 export const TOLERANCIA = 0.12;
 /** Fallos a partir de los cuales el objetivo se dibuja en el pad. */
@@ -13,76 +28,110 @@ export const FALLOS_PARA_VER_OBJETIVO = 3;
 export const OBJETIVO_MIN = 0.15;
 export const OBJETIVO_MAX = 0.85;
 
-/**
- * Objetivo oculto del reto, determinista por semilla.
- * Entrada: ejes de la lección y semilla entera.
- * Idea:
- * - PRNG mulberry32 sembrado con (semilla >>> 0); primer número -> x, segundo -> y.
- * - cada coordenada = OBJETIVO_MIN + r*(OBJETIVO_MAX - OBJETIVO_MIN), redondeada a 2 decimales.
- * - si el eje es "forma": ajustar al centro de su zona (floor(p*4) + 0.5)/4, así ±12 % nunca cambia de forma de onda.
- * - no usar Math.random ni la fecha.
- * Casos:
- * - generarObjetivo(ejes, 7) dos veces -> el mismo { x, y }
- * - semillas 1..20 -> x e y siempre entre 0.15 y 0.85, y al menos 2 objetivos distintos
- * - ejes { x: "forma", y: "tono" } -> x es uno de 0.125, 0.375, 0.625, 0.875
- * - generarObjetivo(ejes, 1) distinto de generarObjetivo(ejes, 2)
- */
-export function generarObjetivo(ejes: EjesLeccion, semilla: number): PosicionPad {
-  throw new Error("devclean: sin implementar");
+/** PRNG mulberry32: determinista, sin Math.random ni la fecha. */
+function mulberry32(semilla: number): () => number {
+  let estado = semilla >>> 0;
+  return () => {
+    estado = (estado + 0x6d2b79f5) | 0;
+    let t = Math.imul(estado ^ (estado >>> 15), 1 | estado);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Coordenada de un eje a partir de un número 0..1 del PRNG. */
+function coordenadaDesde(r: number, parametro: IdParametro): number {
+  const valor = OBJETIVO_MIN + r * (OBJETIVO_MAX - OBJETIVO_MIN);
+  if (parametro === "forma") {
+    return (Math.floor(valor * 4) + 0.5) / 4;
+  }
+  return Math.round(valor * 100) / 100;
 }
 
 /**
- * Empieza un reto: objetivo de la semilla y 0 fallos.
- * Usa: generarObjetivo.
- * Casos:
- * - crearReto(ejes, 3) -> { ejes, semilla: 3, objetivo: generarObjetivo(ejes, 3), fallos: 0 }
+ * Objetivo oculto del reto, determinista por semilla.
+ * Entrada: ejes de la lección y semilla entera.
  */
-export function crearReto(ejes: EjesLeccion, semilla: number): EstadoReto {
-  throw new Error("devclean: sin implementar");
+export function generarObjetivo(ejes: EjesComoTexto, semilla: number): PosicionPad {
+  const siguiente = mulberry32(semilla);
+  const x = coordenadaDesde(siguiente(), ejes.x as IdParametro);
+  const y = coordenadaDesde(siguiente(), ejes.y as IdParametro);
+  return { x, y };
+}
+
+/** Empieza un reto: objetivo de la semilla y 0 fallos. */
+export function crearReto(ejes: EjesComoTexto, semilla: number): EstadoReto {
+  return { ejes: ejes as EjesLeccion, semilla, objetivo: generarObjetivo(ejes, semilla), fallos: 0 };
+}
+
+/** Frases "sube" / "baja" por parámetro. "forma" usa la misma frase en los dos sentidos. */
+const FRASES_PISTA: Record<IdParametro, [string, string]> = {
+  tono: ["Te falta subir el tono", "Te falta bajar el tono"],
+  volumen: ["Te falta subir el volumen", "Te falta bajar el volumen"],
+  forma: ["Te falta cambiar la forma de onda", "Te falta cambiar la forma de onda"],
+  corte: ["Te falta abrir el filtro", "Te falta cerrar el filtro"],
+  resonancia: ["Te falta subir la resonancia", "Te falta bajar la resonancia"],
+  ataque: ["Te falta alargar el ataque", "Te falta acortar el ataque"],
+  relajacion: ["Te falta alargar la relajación", "Te falta acortar la relajación"],
+  lfoVelocidad: ["Te falta acelerar el LFO", "Te falta frenar el LFO"],
+  lfoProfundidad: ["Te falta subir la profundidad del LFO", "Te falta bajar la profundidad del LFO"],
+};
+
+/** Dirección en la que hay que mover el punto del pad. */
+function direccion(eje: Eje, subir: boolean): string {
+  if (eje === "x") return subir ? "a la derecha" : "a la izquierda";
+  return subir ? "hacia arriba" : "hacia abajo";
 }
 
 /**
  * Pista de un eje fallido, con el nombre del parámetro y hacia dónde mover el punto.
  * Entrada: parámetro del eje, eje, y si hay que subir el valor (objetivo mayor que el punto).
  * Salida: "<frase>: mueve el punto <dirección>".
- * Idea:
- * - dirección: x subir "a la derecha", x bajar "a la izquierda", y subir "hacia arriba", y bajar "hacia abajo".
- * - frase (subir / bajar):
- *   tono: "Te falta subir el tono" / "Te falta bajar el tono"
- *   volumen: "Te falta subir el volumen" / "Te falta bajar el volumen"
- *   forma: "Te falta cambiar la forma de onda" (las dos)
- *   corte: "Te falta abrir el filtro" / "Te falta cerrar el filtro"
- *   resonancia: "Te falta subir la resonancia" / "Te falta bajar la resonancia"
- *   ataque: "Te falta alargar el ataque" / "Te falta acortar el ataque"
- *   relajacion: "Te falta alargar la relajación" / "Te falta acortar la relajación"
- *   lfoVelocidad: "Te falta acelerar el LFO" / "Te falta frenar el LFO"
- *   lfoProfundidad: "Te falta subir la profundidad del LFO" / "Te falta bajar la profundidad del LFO"
- * Casos:
- * - pistaEje("corte", "x", true) -> "Te falta abrir el filtro: mueve el punto a la derecha"
- * - pistaEje("resonancia", "y", false) -> "Te falta bajar la resonancia: mueve el punto hacia abajo"
- * - pistaEje("forma", "x", false) -> "Te falta cambiar la forma de onda: mueve el punto a la izquierda"
- * - pistaEje("relajacion", "y", true) -> "Te falta alargar la relajación: mueve el punto hacia arriba"
  */
 export function pistaEje(parametro: IdParametro, eje: Eje, subir: boolean): string {
-  throw new Error("devclean: sin implementar");
+  const [frasesubir, fraseBajar] = FRASES_PISTA[parametro];
+  const frase = subir ? frasesubir : fraseBajar;
+  return `${frase}: mueve el punto ${direccion(eje, subir)}`;
+}
+
+/** true si el punto queda fuera de tolerancia en ese eje (con épsilon contra errores de coma flotante). */
+function fallaEje(valorPunto: number, valorObjetivo: number): boolean {
+  return Math.abs(valorPunto - valorObjetivo) > TOLERANCIA + 1e-9;
 }
 
 /**
  * Comprueba el punto del jugador contra el objetivo.
  * Salida: el resultado y el estado NUEVO (no muta el recibido).
- * Usa: pistaEje, crearReto.
- * Idea:
- * - un eje falla si |punto - objetivo| > TOLERANCIA + 1e-9 (el épsilon evita que 0.62 - 0.5 falle por coma flotante).
- * - acierto (ningún eje falla): estado = crearReto(ejes, semilla + 1) (objetivo nuevo, fallos 0); mostrarObjetivo false; pistas [].
- * - fallo: estado igual con fallos + 1; pistas en orden x, y solo de los ejes que fallan, subir = objetivo > punto;
- *   mostrarObjetivo = fallos nuevos >= FALLOS_PARA_VER_OBJETIVO.
- * Casos: (objetivo { x: 0.5, y: 0.5 }, ejes corte/resonancia, fallos 0)
- * - punto { x: 0.62, y: 0.38 } -> acierto true, pistas [], estado.semilla + 1 y fallos 0
- * - punto { x: 0.63, y: 0.5 } -> acierto false, ejesFallidos ["x"], pistas ["Te falta cerrar el filtro: mueve el punto a la izquierda"], estado.fallos 1
- * - punto { x: 0.1, y: 0.9 } -> ejesFallidos ["x", "y"], 2 pistas (la de y dice "hacia abajo")
- * - con fallos 2 y un punto que falla -> estado.fallos 3 y mostrarObjetivo true; con fallos 0 -> mostrarObjetivo false
- * - el estado de entrada no cambia
  */
-export function comprobarReto(estado: EstadoReto, punto: PosicionPad): { estado: EstadoReto; resultado: ResultadoReto } {
-  throw new Error("devclean: sin implementar");
+export function comprobarReto(
+  estado: EstadoRetoComoTexto,
+  punto: PosicionPad,
+): ResultadoReto & { estado: EstadoReto } {
+  const { ejes, objetivo } = estado;
+  const ejesFallidos: Eje[] = [];
+  if (fallaEje(punto.x, objetivo.x)) ejesFallidos.push("x");
+  if (fallaEje(punto.y, objetivo.y)) ejesFallidos.push("y");
+
+  if (ejesFallidos.length === 0) {
+    return {
+      estado: crearReto(ejes, estado.semilla + 1),
+      acierto: true,
+      ejesFallidos: [],
+      pistas: [],
+      mostrarObjetivo: false,
+    };
+  }
+
+  const fallos = estado.fallos + 1;
+  const pistas = ejesFallidos.map((eje) => {
+    const subir = objetivo[eje] > punto[eje];
+    return pistaEje(ejes[eje] as IdParametro, eje, subir);
+  });
+  return {
+    estado: { ejes: ejes as EjesLeccion, semilla: estado.semilla, objetivo, fallos },
+    acierto: false,
+    ejesFallidos,
+    pistas,
+    mostrarObjetivo: fallos >= FALLOS_PARA_VER_OBJETIVO,
+  };
 }
