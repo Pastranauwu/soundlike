@@ -1,7 +1,7 @@
 # Arquitectura de Soundlike
 
-Base de minijuegos musicales (Vite + TypeScript + Tone.js + Vitest) con el primer
-juego: **Arregla el beat**. Estilo: **en capas con puertos** — un núcleo puro y
+Base de minijuegos musicales (Vite + TypeScript + Tone.js + Vitest) con dos
+juegos: **Arregla el beat** y **Explora el sinte**. Estilo: **en capas con puertos** — un núcleo puro y
 reutilizable (`src/core`), componentes de interfaz compartidos (`src/ui`,
 `src/screens`) y un módulo por juego (`src/games/<juego>/`). TypeScript sin
 framework: el DOM se crea con funciones `crear*` que devuelven elementos.
@@ -35,13 +35,27 @@ framework: el DOM se crea con funciones `crear*` que devuelven elementos.
 | Contenido de teoría | `src/content/escalasYAcordes.ts` | `obtenerTutorialEscalasAcordes()`: tutorial didáctico general (escalas y acordes); los ejemplos salen de `core/theory`. **Datos puros**, sin juego (`ruta: ""`). |
 | Indicador de pasos | `src/ui/indicadorPasos.ts` | Fila de 16 casillas numeradas que solo ilumina el paso que suena; no muestra ningún patrón. Reutilizable. |
 | Pantalla juego | `src/games/arregla-el-beat/screen.ts` | Orquesta: reproductor + cuadrícula + indicador de pasos + juego + escucha + resultado + banco + tutoriales. Título, objetivo, "Aprendes" y marcador arriba (marcador a la derecha); panel de escucha (Escuchar el beat roto, Escuchar el correcto, Tempo, indicador de pasos); controles (Comprobar, Reiniciar); resultado de la jugada; cuadrícula al centro (oculta mientras suena algo). Abre el tutorial la primera vez; "Teoría del beat" abre el didáctico. |
-| Entrada | `src/main.ts` | Importa CSS, registra las 4 rutas y arranca. Solo cableado. |
+| Tipos del sinte | `src/core/synthTypes.ts` | `FormaOnda`, `IdParametro`, `DefinicionParametro`, `PosicionPad`, `AjustesSinte` y el puerto `Sinte` (ajustar, iniciarNota, soltarNota, destruir). Solo declaraciones. |
+| Parámetros del sinte | `src/core/synthParams.ts` | Tabla `PARAMETROS` (nombre, unidad, escala, rango) y conversión posición 0..1 <-> valor: tono C2-C6 y corte 80-8000 Hz exponenciales, volumen/resonancia/profundidad lineales, ataque, relajación y velocidad del LFO exponenciales, forma de onda en 4 zonas. Textos ("Corte: 1.2 kHz", "Tono: A3"). **Puro.** |
+| Sinte | `src/core/synth.ts` | Implementa el puerto `Sinte` con Tone.js: oscilador -> pasa-bajos -> envolvente -> ganancia -> limitador (tope de salida) -> destino, y LFO sobre el corte. Sin archivos de audio. |
+| Pad UI | `src/ui/pad.ts` | Componente reutilizable: recuadro cuadrado con un punto arrastrable (puntero y teclado), nombres de eje en los bordes, lectura de valores `aria-live` y marca de objetivo. No conoce el sinte: avisa con `alPresionar` / `alMover` / `alSoltar`. |
+| Tipos del sinte (juego) | `src/games/explora-el-sinte/types.ts` | `Leccion`, `EjesLeccion`, `EstadoReto`, `ResultadoReto` y el puerto `ProgresoLecciones`. Solo declaraciones. |
+| Lecciones | `src/games/explora-el-sinte/lecciones.ts` | `obtenerLecciones()`: las 6 lecciones (título, 2-3 frases, ejes, ajustes de partida, explicación al acertar). **Datos puros.** |
+| Reto | `src/games/explora-el-sinte/reto.ts` | "Imita el sonido": objetivo determinista por semilla, tolerancia 12 % por eje, pistas con el nombre del parámetro y la dirección, objetivo visible tras 3 fallos. **Puro.** |
+| Progreso | `src/games/explora-el-sinte/progreso.ts` | Implementa `ProgresoLecciones` sobre localStorage (respaldo en memoria): lecciones con reto resuelto. |
+| Tutorial del sinte | `src/games/explora-el-sinte/tutorial.ts` | `obtenerTutorialSinte()`: 2 pantallas (el pad; lecciones y reto). **Datos puros.** |
+| Pantalla del sinte | `src/games/explora-el-sinte/screen.ts` | Orquesta pad + sinte + lecciones + reto + puntaje + progreso + tutorial. Índice y "Lección N de 6", texto de la lección, aviso de audio, pad, reto, resultado, Anterior/Siguiente. Crea el sinte en el primer gesto. |
+| Entrada | `src/main.ts` | Importa CSS, registra las 5 rutas y arranca. Solo cableado. |
 
 ## Dependencias permitidas
 
 - `core/*` solo depende de `core/types` (+ Tone.js en drums/player). **El core no conoce juegos.**
 - `content/*` (tutoriales de teoría sin juego) solo depende de `core/theory` y de
   los tipos de `ui/types`; no conoce juegos ni DOM. Llega a las pantallas por `main.ts`.
+- `synthParams`, y de Explora el sinte `lecciones`, `reto` y `tutorial`, también son
+  **puros** (mismas prohibiciones). `core/synth` es el único archivo nuevo que importa Tone.js.
+- `ui/pad` solo usa el tipo `PosicionPad` del core; la pantalla del juego le pasa
+  nombre y texto de cada eje (`EjePad`) y conecta sus callbacks con el puerto `Sinte`.
 - `theory`, `sequencer`, `scoring`, `breakBeat`, `feedback`, `juego`, `bank`,
   `escucha`, `resultado`, `tutorialTeoria` y `content/*` (lista completa de puros) son
   **puros**: prohibido importar Tone.js o tocar el DOM en ellos.
@@ -90,8 +104,33 @@ framework: el DOM se crea con funciones `crear*` que devuelven elementos.
    `ui/tutorial.ts`; no se abre solo ni se registra como visto. La línea
    "Aprendes:" del encabezado muestra su `aprendes`.
 
+## Flujo de Explora el sinte
+
+1. `main.ts` monta `crearPantallaSinte().elemento` en `#/explora-el-sinte`. Nada
+   de audio se crea al montar: la pantalla recibe una **fábrica** `crearSinte` y la
+   llama en el primer gesto que suena (presionar el pad o "Escuchar el objetivo").
+   Hasta entonces se ve el aviso `.sinte__aviso`. El tutorial se abre solo la
+   primera vez (`registroTutoriales`), "¿Cómo se juega?" lo reabre.
+2. Cada lección (`lecciones.obtenerLecciones()`) fija dos parámetros, uno por eje.
+   El pad (`ui/pad`) avisa `alPresionar` -> `sinte.ajustar` + `iniciarNota`;
+   `alMover` -> `sinte.ajustar(cambioDesdePosicion(...))`; `alSoltar` ->
+   `soltarNota` (se apaga con su relajación; el punto se queda). La lectura
+   "Horizontal · Corte: 1.2 kHz" sale de `synthParams.etiquetaPosicion`.
+3. "Anterior", "Siguiente" o el índice cambian de lección: se suelta la nota, el
+   punto vuelve al centro y cambian ejes y textos. En el patio libre (lección 6)
+   dos listas eligen el parámetro de cada eje y no hay reto.
+4. Reto (lecciones 1-5): "Escuchar el objetivo" toca 1.5 s el sonido de
+   `reto.generarObjetivo(ejes, semilla)`. "Comprobar" -> `reto.comprobarReto`:
+   acierto (12 % o menos en cada eje) -> `scoring.registrarAcierto`,
+   `progreso.marcarResuelta`, frase de la lección y objetivo nuevo (semilla + 1);
+   fallo -> `scoring.registrarFallo` y una pista por eje ("Te falta abrir el
+   filtro: mueve el punto a la derecha"); al 3.er fallo el objetivo se dibuja en el pad.
+5. `hashchange` -> la pantalla se destruye (suelta la nota y libera el sinte).
+6. Tope de volumen: `core/synth` multiplica el volumen por `GANANCIA_MAX` y
+   termina en un `Tone.Limiter(TOPE_DB)`.
+
 Otras rutas: `#/tutoriales` (`crearPantallaTutoriales([obtenerTutorial(),
-obtenerTutorialTeoriaBeat(), obtenerTutorialEscalasAcordes()])`; un tutorial con
+obtenerTutorialTeoriaBeat(), obtenerTutorialEscalasAcordes(), obtenerTutorialSinte()])`; un tutorial con
 `ruta: ""` no muestra el enlace "Jugar") y
 `#/acerca-de` (`crearPantallaAcerca()`), a las que se llega con los botones del menú.
 
@@ -107,7 +146,8 @@ obtenerTutorialTeoriaBeat(), obtenerTutorialEscalasAcordes()])`; un tutorial con
   y de `src/ui/tutorial.ts`, `src/screens/tutoriales.ts`, `src/screens/acerca.ts`.
   Clases BEM: `.cuadricula__celda--activa/--actual/--error`, `.tarjeta--proximamente`,
   `.tarjeta__objetivo/__aprendes`, `.menu__acciones`, `.juego__*`, `.tutorial__*`,
-  `.tutoriales__*`, `.acerca__*`.
+  `.tutoriales__*`, `.acerca__*`, `.pad__*`, `.sinte__*` (la pantalla del sinte
+  reutiliza `.juego__*`).
 - **Plantilla de página**: sin framework; cada vista es una función `crear*` que
   devuelve un `HTMLElement` y el enrutador reemplaza el contenido de `#app`.
   Estados: el juego muestra mensajes en `.juego__mensaje` (`aria-live="polite"`);
@@ -135,6 +175,21 @@ obtenerTutorialTeoriaBeat(), obtenerTutorialEscalasAcordes()])`; un tutorial con
   izquierdo de 4px: verde (`--color-acierto`) si `data-estado="acierto"`, rojo
   (`--color-error`) si `"fallo"`; título h2, resumen, lista de motivos y línea de
   puntaje atenuada. Va entre los controles y la cuadrícula.
+- **Pad** (`.pad`): recuadro cuadrado (`aspect-ratio: 1`) de fondo `--color-fondo`
+  y borde claro de 2px (`--color-texto-suave`), con una retícula tenue en los
+  cuartos; ancho 100 % en celular y máximo 480px centrado en escritorio;
+  `touch-action: none` para que arrastrar no desplace la página. Punto amarillo
+  (`--color-activa`) de 24px que crece a 40px con halo mientras
+  `data-sonando="true"`; objetivo = anillo punteado `--color-acierto`. Nombres de
+  eje en los bordes (abajo el horizontal, a la izquierda y girado el vertical) en
+  texto suave; debajo la lectura `.pad__lectura` en dos líneas con el valor en negrita.
+- **Pantalla Explora el sinte** (`.juego.sinte`): mismo encabezado que Arregla el
+  beat (título, marcador arriba a la derecha, objetivo, "¿Cómo se juega?"); índice
+  `.sinte__indice` como fila de 6 botones redondos numerados (actual en amarillo,
+  resuelto con ✓ y borde verde); tarjeta de superficie con "Lección N de 6",
+  título y frases; aviso de audio en caja punteada; pad al centro; reto debajo
+  (Escuchar el objetivo secundario, Comprobar primario); resultado con la misma
+  tarjeta `.juego__resultado`; Anterior/Siguiente al pie, a cada extremo.
 - **Responsivo**: celular (< 768px) = cada pista ocupa todo el ancho con su
   nombre arriba y sus 16 celdas en 2 filas de 8 (pasos 1-8 y 9-16), celdas
   >= 40px; encabezado apilado (título y marcador en una fila, controles debajo
@@ -165,6 +220,13 @@ entorno `jsdom` y `globals: true` (vite.config.ts).
   tokens y reglas que el usuario nota (foco visible, tamaños táctiles, 900px,
   punto de corte 768px); el aspecto final se juzga con capturas
   (`npm run capturas`, Playwright).
+- synthParams, lecciones, reto, tutorial del sinte: Vitest directo, sin mocks.
+- synth: Vitest con `vi.mock("tone")` (nodos fake que anotan llamadas).
+- pad: Vitest + jsdom montado en `document.body`, con `getBoundingClientRect`
+  simulado; eventos `pointerdown/move/up` y `keydown`.
+- progreso: `Storage` fake. Pantalla del sinte: `OpcionesPantallaSinte` con sinte
+  fake (fábrica espía), progreso y registro en memoria y timers falsos.
+- Integración de Explora el sinte: `tests/integracion-sinte.test.ts`.
 - indicadorPasos: Vitest + jsdom (casillas, `aria-current`, `aria-label`).
 - Integración punta a punta vigente: `tests/integracion-escucha.test.ts`
   (aceptación global + escucha a ciegas + resultado de la jugada + tutoriales
