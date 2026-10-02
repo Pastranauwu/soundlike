@@ -772,3 +772,240 @@ a.tarjeta:hover {
     transform: none;
   }
 }
+
+/* ---------- Explora el sinte ---------- */
+
+/* Los hijos de la rejilla pueden encogerse: nada desborda a lo ancho en celular. */
+.sinte > * {
+  min-width: 0;
+}
+
+.pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.pad__marco {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 8px;
+  width: 100%;
+}
+
+.pad__eje {
+  color: var(--color-texto-suave);
+  font-size: 0.85em;
+  text-align: center;
+}
+
+/* Girado 180°: el texto vertical se lee de abajo hacia arriba, como crece el eje. */
+.pad__eje--y {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.pad__eje--x {
+  grid-column: 2;
+}
+
+.pad__area {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 2px solid var(--color-texto-suave);
+  border-radius: var(--radio);
+  background-color: var(--color-fondo);
+  background-image:
+    linear-gradient(to right, var(--color-borde) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-borde) 1px, transparent 1px);
+  background-size: 25% 25%;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.pad__area:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 3px;
+}
+
+/* left/bottom marcan el centro del círculo: el transform lo centra sobre ese punto. */
+.pad__punto {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-activa);
+  transform: translate(-50%, 50%);
+  transition: width 120ms ease, height 120ms ease, box-shadow 120ms ease;
+  pointer-events: none;
+}
+
+.pad__area[data-sonando="true"] .pad__punto {
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-activa) 30%, transparent);
+}
+
+.pad__objetivo {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border: 3px dashed var(--color-acierto);
+  border-radius: 50%;
+  transform: translate(-50%, 50%);
+  pointer-events: none;
+}
+
+.pad__objetivo[hidden] {
+  display: none;
+}
+
+.pad__lectura {
+  width: 100%;
+  margin-top: var(--espacio);
+  text-align: center;
+}
+
+.pad__valor {
+  margin: 4px 0;
+  color: var(--color-texto);
+  font-weight: 600;
+}
+
+.sinte__indice ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sinte__indice-boton {
+  width: var(--tactil-min);
+  height: var(--tactil-min);
+  padding: 0;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+}
+
+.sinte__indice-boton[data-resuelta="true"] {
+  width: auto;
+  min-width: 56px;
+  padding: 0 12px;
+  border: 2px solid var(--color-acierto);
+}
+
+.sinte__indice-boton[aria-current="step"] {
+  background: var(--color-activa);
+  color: var(--color-fondo);
+  font-weight: 700;
+}
+
+/* El anillo amarillo no se distingue sobre un botón amarillo. */
+.sinte__indice-boton[aria-current="step"]:focus-visible {
+  outline-color: var(--color-foco-contraste);
+}
+
+.sinte__leccion {
+  padding: var(--espacio);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+
+.sinte__paso {
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: 0.85em;
+  text-transform: uppercase;
+}
+
+.sinte__titulo {
+  font-size: 1.3em;
+}
+
+.sinte__frase {
+  margin: 8px 0;
+}
+
+.sinte__libre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio);
+}
+
+.sinte__libre label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sinte__libre select {
+  min-height: var(--tactil-min);
+  padding: 0 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font: inherit;
+}
+
+.sinte__aviso {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio);
+  color: var(--color-texto-suave);
+}
+
+.sinte__aviso[hidden] {
+  display: none;
+}
+
+.sinte__reto {
+  margin-top: var(--espacio);
+}
+
+.sinte__reto-titulo {
+  margin: 0 0 12px;
+  font-size: 1.1em;
+}
+
+/* Celular: los botones del reto apilados a todo el ancho. */
+.sinte__reto .juego__controles button {
+  flex: 1 1 100%;
+}
+
+.sinte__navegacion {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espacio);
+}
+
+.sinte__navegacion button {
+  min-width: 120px;
+  min-height: var(--tactil-min);
+}
+
+.sinte__navegacion button:disabled {
+  opacity: 0.45;
+}
+
+@media (min-width: 768px) {
+  .sinte__libre {
+    flex-direction: row;
+  }
+
+  .sinte__reto .juego__controles button {
+    flex: 0 1 auto;
+  }
+}
