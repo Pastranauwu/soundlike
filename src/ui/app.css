@@ -956,15 +956,16 @@ a.tarjeta:hover {
   margin: 8px 0;
 }
 
+/* El patio libre se apila en filas: Estilo, ejes, formulario y lista de presets. */
 .sinte__libre {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--espacio);
 }
 
 .sinte__libre label {
   display: flex;
-  flex: 1;
+  flex: 1 1 100%;
   flex-direction: column;
   gap: 4px;
 }
@@ -981,6 +982,7 @@ a.tarjeta:hover {
 
 .sinte__estilos {
   display: flex;
+  flex: 1 1 100%;
   flex-wrap: wrap;
   gap: 8px;
   margin: 0;
@@ -1010,6 +1012,7 @@ a.tarjeta:hover {
 
 .sinte__presets {
   display: flex;
+  flex: 1 1 100%;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -1027,6 +1030,7 @@ a.tarjeta:hover {
 
 .sinte__preset-lista {
   display: flex;
+  flex: 1 1 100%;
   flex-direction: column;
   gap: 8px;
   margin: 0;
@@ -1040,8 +1044,13 @@ a.tarjeta:hover {
   gap: 8px;
 }
 
+/* El nombre en una línea; los botones (Cargar, Borrar) quedan a la derecha. */
 .sinte__preset-titulo {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sinte__aviso {
@@ -1086,14 +1095,9 @@ a.tarjeta:hover {
 }
 
 @media (min-width: 768px) {
-  .sinte__libre {
-    flex-direction: row;
-  }
-
-  .sinte__estilos,
-  .sinte__presets,
-  .sinte__preset-lista {
-    flex-basis: 100%;
+  /* En escritorio los dos ejes comparten fila; el resto sigue a todo el ancho. */
+  .sinte__libre label {
+    flex: 1 1 calc(50% - var(--espacio) / 2);
   }
 
   .sinte__reto .juego__controles button {
