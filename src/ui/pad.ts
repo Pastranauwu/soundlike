@@ -78,19 +78,8 @@ export interface PadUI {
   mostrarObjetivo(posicion: PosicionPad | null): void;
   /**
    * Pinta el pad y su lectura con el color y el nombre del estilo.
-   * Con null vuelve al tema (quita data-estilo, --pad-color y oculta .pad__estilo).
+   * Con null vuelve al tema: quita data-estilo y --pad-color y oculta .pad__estilo.
    * No toca el punto ni la posición.
-   *
-   * Idea: guardar `estiloActual: EstiloPad | null` y repintar. Con estilo:
-   * elemento.style.setProperty("--pad-color", estilo.color), elemento.dataset.estilo
-   * = estilo.id y `.pad__estilo`.textContent = estilo.nombre + hidden = false.
-   * Con null: removeProperty("--pad-color"), delete dataset.estilo, `.pad__estilo`
-   * hidden = true. El elemento raíz es `.pad` (no el área): data-estilo debe
-   * quedar en `.pad` para que la lectura también se tiña. No tocar punto/posición.
-   * Casos:
-   * - ponerEstilo({id:"rave",nombre:"Sinte de rave electrónico",color:"#22d3ee"}) -> raíz data-estilo "rave", style --pad-color "#22d3ee", .pad__estilo visible con el nombre.
-   * - ponerEstilo(null) tras uno -> sin data-estilo, sin --pad-color y .pad__estilo hidden.
-   * - estilo con color distinto -> --pad-color cambia y el punto sigue en su sitio.
    */
   ponerEstilo(estilo: EstiloPad | null): void;
   /** true mientras la nota está mantenida. */
@@ -128,6 +117,7 @@ export function crearPad(opciones: OpcionesPad): PadUI {
   let ejeVertical = opciones.ejeVertical;
   let posicionActual = recortarPosicion(opciones.posicion ?? { x: 0.5, y: 0.5 });
   let sonandoActual = false;
+  let estiloActual: EstiloPad | null = null;
   let origenMantenida: "puntero" | "teclado" | null = null;
   let punteroActivo: number | null = null;
 
@@ -169,6 +159,10 @@ export function crearPad(opciones: OpcionesPad): PadUI {
 
   marco.append(etiquetaVertical, area, etiquetaHorizontal);
 
+  const estiloTexto = document.createElement("p");
+  estiloTexto.className = "pad__estilo";
+  estiloTexto.hidden = true;
+
   const lectura = document.createElement("div");
   lectura.className = "pad__lectura";
   lectura.setAttribute("aria-live", "polite");
@@ -179,7 +173,7 @@ export function crearPad(opciones: OpcionesPad): PadUI {
   valorVertical.className = "pad__valor pad__valor--y";
   lectura.append(valorHorizontal, valorVertical);
 
-  elemento.append(marco, lectura);
+  elemento.append(marco, estiloTexto, lectura);
 
   function pintarPunto(): void {
     punto.style.left = comoPorcentaje(posicionActual.x);
@@ -337,8 +331,18 @@ export function crearPad(opciones: OpcionesPad): PadUI {
       objetivo.style.bottom = comoPorcentaje(recortada.y);
       objetivo.hidden = false;
     },
-    ponerEstilo(_estilo: EstiloPad | null): void {
-      throw new Error("devclean: sin implementar");
+    ponerEstilo(estilo: EstiloPad | null): void {
+      estiloActual = estilo;
+      if (estiloActual === null) {
+        elemento.style.removeProperty("--pad-color");
+        delete elemento.dataset.estilo;
+        estiloTexto.hidden = true;
+        return;
+      }
+      elemento.style.setProperty("--pad-color", estiloActual.color);
+      elemento.dataset.estilo = estiloActual.id;
+      estiloTexto.textContent = estiloActual.nombre;
+      estiloTexto.hidden = false;
     },
     sonando: () => sonandoActual,
     soltar: () => soltarMantenida(),

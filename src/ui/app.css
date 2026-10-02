@@ -789,6 +789,26 @@ a.tarjeta:hover {
   margin: 0 auto;
 }
 
+.pad__estilo {
+  margin: 8px 0 0;
+  color: var(--pad-color, var(--color-texto-suave));
+  font-weight: 700;
+  text-align: center;
+}
+
+.pad__estilo[hidden] {
+  display: none;
+}
+
+.pad[data-estilo] .pad__area {
+  border-color: var(--pad-color);
+  background-color: color-mix(in srgb, var(--pad-color) 24%, var(--color-fondo));
+}
+
+.pad[data-estilo] .pad__lectura {
+  color: var(--pad-color);
+}
+
 .pad__marco {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
